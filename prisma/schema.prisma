@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Binder {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  pages       Page[]
+  cards       BinderCard[]
+
+  @@map("binders")
+}
+
+model Page {
+  id           String       @id @default(cuid())
+  binderId     String
+  pageNumber   Int
+  imagePath    String
+  rawAiOutput  String?
+  processedAt  DateTime?
+  status       String       @default("pending")
+  createdAt    DateTime     @default(now())
+  binder       Binder       @relation(fields: [binderId], references: [id], onDelete: Cascade)
+  cards        BinderCard[]
+
+  @@map("pages")
+}
+
+model BinderCard {
+  id              String    @id @default(cuid())
+  binderId        String
+  pageId          String?
+  tcgApiId        String
+  name            String
+  setId           String
+  setName         String
+  collectorNumber String
+  rarity          String?
+  imageUrl        String?
+  priceLow        Float?
+  priceMid        Float?
+  priceMarket     Float?
+  priceHigh       Float?
+  priceUpdatedAt  DateTime?
+  quantity        Int       @default(1)
+  condition       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  binder          Binder    @relation(fields: [binderId], references: [id], onDelete: Cascade)
+  page            Page?     @relation(fields: [pageId], references: [id])
+
+  @@map("binder_cards")
+}
