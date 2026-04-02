@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { identifyCardsOnPage } from '@/lib/claude'
 import { matchCard, extractBestPrice } from '@/lib/pokemon-tcg'
+import { getUploadDir, getImageServingPath } from '@/lib/storage'
 import * as fs from 'fs'
 import * as path from 'path'
 import { createId } from '@paralleldrive/cuid2'
@@ -18,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!files.length) return NextResponse.json({ error: 'No images provided' }, { status: 400 })
 
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', id)
+  const uploadDir = getUploadDir(id)
   fs.mkdirSync(uploadDir, { recursive: true })
 
   const existingPages = await prisma.page.count({ where: { binderId: id } })
@@ -26,33 +27,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
-    const ext = file.name.split('.').pop() || 'jpg'
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
     const filename = `${createId()}.${ext}`
     const filePath = path.join(uploadDir, filename)
-    const relativePath = `/uploads/${id}/${filename}`
+    const servingPath = getImageServingPath(id, filename)
 
-    // Save file
+    // Save file to disk
     const buffer = Buffer.from(await file.arrayBuffer())
     fs.writeFileSync(filePath, buffer)
 
-    // Create page record
+    const pageNumber = existingPages + i + 1
     const page = await prisma.page.create({
       data: {
         binderId: id,
-        pageNumber: existingPages + i + 1,
-        imagePath: relativePath,
+        pageNumber,
+        position: pageNumber,
+        name: `Page ${pageNumber}`,
+        imagePath: servingPath,
         status: 'processing',
       },
     })
 
     try {
-      // Identify cards with Claude
-      const identified = await identifyCardsOnPage(relativePath)
-      const rawOutput = JSON.stringify(identified)
+      const { cards: identified, rawText } = await identifyCardsOnPage(servingPath)
 
       const savedCards = []
-
-      // Match each card against TCG API
       for (const card of identified) {
         const match = await matchCard(card)
         const prices = extractBestPrice(match?.tcgplayer, card.notes)
@@ -78,17 +77,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       await prisma.page.update({
         where: { id: page.id },
-        data: { status: 'done', rawAiOutput: rawOutput, processedAt: new Date() },
+        data: { status: 'done', rawAiOutput: rawText, processedAt: new Date() },
       })
 
-      results.push({ pageId: page.id, pageNumber: page.pageNumber, cardsFound: savedCards.length, cards: savedCards })
+      results.push({ pageId: page.id, pageNumber, cardsFound: savedCards.length, cards: savedCards })
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
       await prisma.page.update({
         where: { id: page.id },
         data: { status: 'error', rawAiOutput: errorMsg },
       })
-      results.push({ pageId: page.id, pageNumber: page.pageNumber, error: errorMsg })
+      results.push({ pageId: page.id, pageNumber, error: errorMsg })
     }
   }
 

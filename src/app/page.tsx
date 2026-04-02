@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, BookOpen, ChevronRight } from 'lucide-react'
+import { Plus, BookOpen, ChevronRight, Settings } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,12 +24,19 @@ export default async function HomePage() {
           <h1 className="text-2xl font-bold tracking-tight">Pokemon Binder</h1>
           <p className="text-muted-foreground text-sm mt-1">Track and value your collection</p>
         </div>
-        <Link href="/binders/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            New Binder
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/settings">
+            <Button variant="ghost" size="sm">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/binders/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              New Binder
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {binders.length === 0 ? (

@@ -23,6 +23,8 @@ model Page {
   id           String       @id @default(cuid())
   binderId     String
   pageNumber   Int
+  position     Int          @default(0)
+  name         String       @default("")
   imagePath    String
   rawAiOutput  String?
   processedAt  DateTime?
@@ -52,6 +54,7 @@ model BinderCard {
   priceUpdatedAt  DateTime?
   quantity        Int       @default(1)
   condition       String?
+  tradeList       Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   binder          Binder    @relation(fields: [binderId], references: [id], onDelete: Cascade)

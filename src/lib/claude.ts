@@ -1,9 +1,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import * as fs from 'fs'
 import * as path from 'path'
+import { resolveImagePath } from './storage'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+function getModel() {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
+  const genAI = new GoogleGenerativeAI(apiKey)
+  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+}
 
 export interface IdentifiedCard {
   name: string
@@ -14,28 +19,43 @@ export interface IdentifiedCard {
   notes: string | null
 }
 
-export async function identifyCardsOnPage(imagePath: string): Promise<IdentifiedCard[]> {
-  const absolutePath = path.join(process.cwd(), 'public', imagePath)
+export async function identifyCardsOnPage(imagePath: string): Promise<{ cards: IdentifiedCard[]; rawText: string }> {
+  const absolutePath = resolveImagePath(imagePath)
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Image file not found: ${absolutePath}`)
+  }
+
   const imageBuffer = fs.readFileSync(absolutePath)
   const base64Image = imageBuffer.toString('base64')
 
   const ext = path.extname(imagePath).toLowerCase()
-  const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg'
+  let mimeType: string
+  if (ext === '.png') mimeType = 'image/png'
+  else if (ext === '.webp') mimeType = 'image/webp'
+  else mimeType = 'image/jpeg'
 
-  const prompt = `You are an expert Pokemon card identifier. Analyze the binder page image and identify every Pokemon card visible. Return ONLY a valid JSON array with no other text, markdown, or explanation.
+  const prompt = `You are an expert Pokemon card identifier. Analyze this binder page image and identify every Pokemon card visible.
 
-Each object in the array must have exactly these fields:
-- name: string (exact Pokemon card name, e.g. "Charizard", "Pikachu VMAX", "Lugia V")
-- setName: string | null (set name if visible, e.g. "Base Set", "Sword & Shield", "Scarlet & Violet")
-- collectorNumber: string | null (number printed on card bottom, e.g. "4/102", "25", "SWSH061")
-- quantity: number (how many copies are visible in this position, almost always 1)
-- condition: "NM" | "LP" | "MP" | "HP" | "DMG" | null (card condition if assessable)
-- notes: string | null (e.g. "holo", "reverse holo", "1st edition", "shadowless", "full art")
+IMPORTANT: Return ONLY a raw JSON array — no markdown, no code blocks, no explanation text before or after the JSON. Start your response with [ and end with ].
 
-Skip empty slots. Skip cards that are completely unreadable. Return an empty array [] if no cards are visible.
+Each object must have exactly these fields:
+- "name": string — the Pokemon card name (e.g. "Charizard", "Pikachu VMAX", "Lugia V"). Use your best guess even if partially obscured.
+- "setName": string or null — set name if readable (e.g. "Base Set", "Sword & Shield")
+- "collectorNumber": string or null — the number at the bottom of the card (e.g. "4/102", "025/202")
+- "quantity": number — almost always 1
+- "condition": "NM" | "LP" | "MP" | "HP" | "DMG" | null — card condition
+- "notes": string or null — e.g. "holo", "reverse holo", "1st edition", "shadowless", "full art"
 
-Identify all Pokemon cards visible on this binder page.`
+Rules:
+- Include EVERY card you can see, even partially visible ones
+- If you are unsure of the exact name, give your best guess
+- Only skip a slot if it is completely empty (no card at all)
+- If no cards are visible at all, return []
 
+Identify all Pokemon cards on this binder page now.`
+
+  const model = getModel()
   const result = await model.generateContent([
     {
       inlineData: {
@@ -46,14 +66,27 @@ Identify all Pokemon cards visible on this binder page.`
     prompt,
   ])
 
-  const text = result.response.text()
+  const rawText = result.response.text()
 
-  // Strip markdown code blocks if present
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Extract JSON array from response — handle cases where model wraps in markdown
+  let jsonStr = rawText.trim()
 
-  const parsed = JSON.parse(cleaned)
+  // Strip markdown code fences if present
+  jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
 
-  return parsed.map((card: IdentifiedCard) => ({
+  // Find the first [ and last ] to extract just the array
+  const start = jsonStr.indexOf('[')
+  const end = jsonStr.lastIndexOf(']')
+  if (start === -1 || end === -1) {
+    // Model returned prose with no JSON array — treat as empty
+    return { cards: [], rawText }
+  }
+
+  jsonStr = jsonStr.slice(start, end + 1)
+
+  const parsed = JSON.parse(jsonStr)
+
+  const cards = parsed.map((card: IdentifiedCard) => ({
     name: card.name || 'Unknown',
     setName: card.setName || null,
     collectorNumber: card.collectorNumber || null,
@@ -61,4 +94,6 @@ Identify all Pokemon cards visible on this binder page.`
     condition: card.condition || null,
     notes: card.notes || null,
   }))
+
+  return { cards, rawText }
 }

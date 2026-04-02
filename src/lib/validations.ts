@@ -13,4 +13,5 @@ export const UpdateBinderSchema = z.object({
 export const UpdateCardSchema = z.object({
   quantity: z.number().int().min(1).max(99).optional(),
   condition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).nullable().optional(),
+  tradeList: z.boolean().optional(),
 })

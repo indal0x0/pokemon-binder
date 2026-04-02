@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ArrowLeftRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderCardModel } from '@/generated/prisma/models/BinderCard'
@@ -10,18 +10,43 @@ import type { BinderCardModel } from '@/generated/prisma/models/BinderCard'
 export function BinderCardGrid({ cards, binderId }: { cards: BinderCardModel[]; binderId: string }) {
   const router = useRouter()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   async function deleteCard(cardId: string) {
     setDeletingId(cardId)
-    await fetch(`/api/binders/${binderId}/cards/${cardId}`, { method: 'DELETE' })
-    router.refresh()
-    setDeletingId(null)
+    try {
+      await fetch(`/api/binders/${binderId}/cards/${cardId}`, { method: 'DELETE' })
+      router.refresh()
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function toggleTradeList(card: BinderCardModel) {
+    setTogglingId(card.id)
+    try {
+      await fetch(`/api/binders/${binderId}/cards/${card.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tradeList: !card.tradeList }),
+      })
+      router.refresh()
+    } finally {
+      setTogglingId(null)
+    }
   }
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
       {cards.map(card => (
         <div key={card.id} className="group relative bg-card border rounded-lg overflow-hidden hover:border-primary/50 transition-colors">
+          {card.tradeList && (
+            <div className="absolute top-1.5 left-1.5 z-10">
+              <Badge className="text-[10px] px-1 py-0 bg-amber-500 hover:bg-amber-500 text-white border-0">
+                Trade
+              </Badge>
+            </div>
+          )}
           {card.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover" />
@@ -46,13 +71,25 @@ export function BinderCardGrid({ cards, binderId }: { cards: BinderCardModel[]; 
               </div>
             </div>
           </div>
-          <button
-            onClick={() => deleteCard(card.id)}
-            disabled={deletingId === card.id}
-            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-background/80 rounded p-1 hover:bg-destructive hover:text-destructive-foreground transition-all"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+
+          {/* Hover controls */}
+          <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => toggleTradeList(card)}
+              disabled={togglingId === card.id}
+              title={card.tradeList ? 'Remove from trade list' : 'Add to trade list'}
+              className="bg-background/80 rounded p-1 hover:bg-amber-500 hover:text-white transition-colors"
+            >
+              <ArrowLeftRight className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => deleteCard(card.id)}
+              disabled={deletingId === card.id}
+              className="bg-background/80 rounded p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       ))}
     </div>

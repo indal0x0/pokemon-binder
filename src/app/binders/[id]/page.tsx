@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Upload } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
+import { PagesGallery } from '@/components/PagesGallery'
 import { formatCurrency } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,10 @@ export default async function BinderPage({ params }: { params: Promise<{ id: str
   const binder = await prisma.binder.findUnique({
     where: { id },
     include: {
-      pages: { orderBy: { pageNumber: 'asc' } },
+      pages: {
+        orderBy: { position: 'asc' },
+        include: { cards: { select: { id: true } } },
+      },
       cards: { orderBy: { createdAt: 'asc' } },
     },
   })
@@ -61,12 +65,19 @@ export default async function BinderPage({ params }: { params: Promise<{ id: str
         </Link>
       </div>
 
+      {binder.pages.length > 0 && (
+        <PagesGallery pages={binder.pages} binderId={binder.id} />
+      )}
+
       {binder.cards.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-sm">No cards yet. Upload binder page photos to get started.</p>
         </div>
       ) : (
-        <BinderCardGrid cards={binder.cards} binderId={binder.id} />
+        <>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">All Cards</h2>
+          <BinderCardGrid cards={binder.cards} binderId={binder.id} />
+        </>
       )}
     </main>
   )
