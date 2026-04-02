@@ -4,15 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-```bash
-npm run dev       # Start dev server at http://localhost:3000
-npm run build     # Production build (also type-checks)
-npm run lint      # ESLint
+`npm` is not on the default PATH in this environment. Always prefix with the full Node path:
 
-npx prisma migrate dev --name <name>   # Create and run a new migration
-npx prisma generate                    # Regenerate Prisma client after schema changes
-npx prisma studio                      # Browse the SQLite database in a GUI
+```bash
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npm run dev     # Start dev server
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npm run build   # Production build (also type-checks)
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npm run lint    # ESLint
+
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npx prisma migrate dev --name <name>   # Create and run a new migration
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npx prisma generate                    # Regenerate Prisma client after schema changes
+PATH="/c/Users/danie/node20.19/node-v20.19.0-win-x64:$PATH" npx prisma studio                      # Browse the SQLite database in a GUI
 ```
+
+To kill stale Next.js dev server processes: `cmd.exe /c "taskkill /F /IM node.exe"`
 
 No test suite is configured.
 
@@ -41,9 +45,9 @@ This is a Next.js 16 / React 19 App Router application. All data lives in a loca
 The core feature lives in `src/app/api/binders/[id]/pages/upload/route.ts`. For each uploaded image:
 
 1. File saved to `public/uploads/[binderId]/[filename]` (served as static assets)
-2. `src/lib/claude.ts` — reads the file, base64-encodes it, sends to `gemini-2.0-flash` with a structured JSON prompt. Returns `IdentifiedCard[]` with name, set, collector number, condition, notes.
-3. `src/lib/pokemon-tcg.ts` — `matchCard()` runs a 3-attempt cascade against `https://api.pokemontcg.io/v2/cards`: (1) name + collector number, (2) name + set name, (3) name only sorted by highest market price. `extractBestPrice()` selects the right TCGPlayer price variant (holofoil/normal/reverse/1st edition) based on Claude's `notes` field.
-4. Results written to `BinderCard` rows; `Page.rawAiOutput` stores the raw Claude JSON for debugging misidentifications.
+2. `src/lib/claude.ts` — reads the file, base64-encodes it, sends to `gemini-1.5-flash` with a structured JSON prompt. Returns `IdentifiedCard[]` with name, set, collector number, condition, notes. (File is named `claude.ts` for historical reasons — it uses Gemini.)
+3. `src/lib/pokemon-tcg.ts` — `matchCard()` runs a 3-attempt cascade against `https://api.pokemontcg.io/v2/cards`: (1) name + collector number, (2) name + set name, (3) name only sorted by highest market price. `extractBestPrice()` selects the right TCGPlayer price variant (holofoil/normal/reverse/1st edition) based on the `notes` field returned by Gemini.
+4. Results written to `BinderCard` rows; `Page.rawAiOutput` stores the raw Gemini JSON for debugging misidentifications.
 
 Unmatched cards (TCG API found nothing) are saved with `tcgApiId = "unmatched-{cuid}"` and no pricing data. The route has `export const maxDuration = 120` to handle multi-page uploads.
 
