@@ -14,10 +14,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    window.electronAPI?.listBinders().then(data => {
+    if (!window.electronAPI) { setLoading(false); return }
+    window.electronAPI.listBinders().then(data => {
       setBinders(data)
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [])
 
   return (

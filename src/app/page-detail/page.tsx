@@ -21,11 +21,13 @@ export default function PageDetailPage() {
   const binderId = params.get('binderId') ?? ''
 
   const load = useCallback(async () => {
-    if (!pageId || !window.electronAPI) return
-    const data = await window.electronAPI.getPage(pageId)
-    if (!data) { router.push('/'); return }
-    setPage(data)
-    setLoading(false)
+    if (!pageId || !window.electronAPI) { setLoading(false); return }
+    try {
+      const data = await window.electronAPI.getPage(pageId)
+      if (!data) { router.push('/'); return }
+      setPage(data)
+      setLoading(false)
+    } catch { setLoading(false) }
   }, [pageId, router])
 
   useEffect(() => { load() }, [load])

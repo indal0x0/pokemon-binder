@@ -23,11 +23,13 @@ export default function BinderPage() {
     : ''
 
   const load = useCallback(async () => {
-    if (!binderId || !window.electronAPI) return
-    const data = await window.electronAPI.getBinder(binderId)
-    if (!data) { router.push('/'); return }
-    setBinder(data)
-    setLoading(false)
+    if (!binderId || !window.electronAPI) { setLoading(false); return }
+    try {
+      const data = await window.electronAPI.getBinder(binderId)
+      if (!data) { router.push('/'); return }
+      setBinder(data)
+      setLoading(false)
+    } catch { setLoading(false) }
   }, [binderId, router])
 
   useEffect(() => { load() }, [load])

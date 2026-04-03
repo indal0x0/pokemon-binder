@@ -73,6 +73,10 @@ function createWindow() {
     mainWindow.loadURL('app://./index.html')
   }
 
+  mainWindow.webContents.on('before-input-event', (_, input) => {
+    if (input.key === 'F12') mainWindow.webContents.openDevTools()
+  })
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
