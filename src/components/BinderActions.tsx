@@ -14,19 +14,19 @@ import {
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export function BinderActions({ binderId }: { binderId: string }) {
+export function BinderActions({ binderId, onRefresh }: { binderId: string; onRefresh: () => void }) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   async function refreshPrices() {
+    if (!window.electronAPI) return
     setRefreshing(true)
     try {
-      const res = await fetch(`/api/binders/${binderId}/refresh-prices`, { method: 'POST' })
-      const data = await res.json()
+      const data = await window.electronAPI.refreshPrices(binderId)
       toast.success(`Updated prices for ${data.updated} cards`)
-      router.refresh()
+      onRefresh()
     } catch {
       toast.error('Failed to refresh prices')
     } finally {
@@ -35,13 +35,10 @@ export function BinderActions({ binderId }: { binderId: string }) {
   }
 
   async function deleteBinder() {
+    if (!window.electronAPI) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/binders/${binderId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Delete failed')
-      }
+      await window.electronAPI.deleteBinder(binderId)
       router.push('/')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete binder')

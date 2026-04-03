@@ -1,9 +1,14 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, protocol, net, shell, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const http = require('http')
 const Store = require('electron-store')
 
+// ─── Protocol must be registered BEFORE app is ready ─────────────────────────
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+])
+
+// ─── Electron-store ───────────────────────────────────────────────────────────
 const store = new Store({
   schema: {
     settings: {
@@ -18,90 +23,33 @@ const store = new Store({
 })
 
 const isDev = !app.isPackaged
-const PORT = 3000
-
 let mainWindow = null
+let db = null
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getUserDataPath(...segments) {
   return path.join(app.getPath('userData'), ...segments)
 }
 
-function ensureUserDataDirs() {
-  fs.mkdirSync(getUserDataPath('uploads'), { recursive: true })
+function ensureDir(...segments) {
+  fs.mkdirSync(getUserDataPath(...segments), { recursive: true })
 }
 
-function applyEnv() {
-  const settings = store.get('settings', {})
-  process.env.GEMINI_API_KEY = settings.geminiApiKey || process.env.GEMINI_API_KEY || ''
-  process.env.POKEMON_TCG_API_KEY = settings.pokemonTcgApiKey || process.env.POKEMON_TCG_API_KEY || ''
-  process.env.ELECTRON_USER_DATA = app.getPath('userData')
-  process.env.DATABASE_URL = `file:${getUserDataPath('pokemon-binder.db')}`
-  process.env.PORT = String(PORT)
+function getSettings() {
+  return store.get('settings', {})
 }
 
-function waitForServer(maxWaitMs = 30000) {
-  return new Promise((resolve, reject) => {
-    const start = Date.now()
-    function check() {
-      http.get(`http://localhost:${PORT}`, res => {
-        res.destroy()
-        resolve()
-      }).on('error', () => {
-        if (Date.now() - start > maxWaitMs) {
-          reject(new Error(`Server did not start within ${maxWaitMs}ms`))
-        } else {
-          setTimeout(check, 300)
-        }
-      })
-    }
-    check()
-  })
+// ─── Database init ────────────────────────────────────────────────────────────
+
+function initDatabase() {
+  const Database = require('better-sqlite3')
+  const dbPath = getUserDataPath('pokemon-binder.db')
+  const { initDb } = require('./db')
+  db = initDb(Database, dbPath)
 }
 
-async function startNextServer() {
-  applyEnv()
-
-  if (isDev) {
-    // Dev: Next.js dev server is started separately via `npm run dev`
-    // Just wait for it to be ready
-    await waitForServer(60000)
-    return
-  }
-
-  // Production: require() the standalone server directly in this process.
-  // This works because Electron IS Node.js, so native modules (better-sqlite3)
-  // load correctly without any ABI mismatch.
-  const appRoot = app.getAppPath()
-  const serverScript = path.join(appRoot, '.next', 'standalone', 'server.js')
-
-  if (!fs.existsSync(serverScript)) {
-    throw new Error(
-      `Standalone server not found at:\n${serverScript}\n\nRun "npm run build" first.`
-    )
-  }
-
-  // Copy static assets into standalone if missing (required by Next.js standalone)
-  const staticSrc = path.join(appRoot, '.next', 'static')
-  const staticDest = path.join(appRoot, '.next', 'standalone', '.next', 'static')
-  if (fs.existsSync(staticSrc) && !fs.existsSync(staticDest)) {
-    fs.cpSync(staticSrc, staticDest, { recursive: true })
-  }
-
-  // Copy public assets into standalone if missing
-  const publicSrc = path.join(appRoot, 'public')
-  const publicDest = path.join(appRoot, '.next', 'standalone', 'public')
-  if (fs.existsSync(publicSrc) && !fs.existsSync(publicDest)) {
-    fs.cpSync(publicSrc, publicDest, { recursive: true })
-  }
-
-  // Set the working directory the standalone server expects
-  process.chdir(path.join(appRoot, '.next', 'standalone'))
-
-  // Load and start the server in-process
-  require(serverScript)
-
-  await waitForServer(30000)
-}
+// ─── Window ───────────────────────────────────────────────────────────────────
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -117,10 +65,14 @@ function createWindow() {
     },
   })
 
-  mainWindow.loadURL(`http://localhost:${PORT}`)
   mainWindow.setMenuBarVisibility(false)
 
-  // Open external links in the system browser, not inside the app
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000')
+  } else {
+    mainWindow.loadURL('app://./index.html')
+  }
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -129,29 +81,259 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
-// ─── IPC handlers ───────────────────────────────────────────────────────────
+// ─── Protocol handler (production only) ──────────────────────────────────────
 
-ipcMain.handle('settings:get', () => store.get('settings', {}))
+function registerAppProtocol() {
+  const outDir = path.join(app.getAppPath(), 'out')
+  const uploadsDir = getUserDataPath('uploads')
+
+  protocol.handle('app', (request) => {
+    let urlPath = new URL(request.url).pathname
+    // Decode percent-encoding
+    urlPath = decodeURIComponent(urlPath)
+
+    // User-uploaded images: app://./uploads/binderId/filename
+    if (urlPath.startsWith('/uploads/')) {
+      const filePath = path.join(uploadsDir, urlPath.slice('/uploads/'.length))
+      return net.fetch(`file:///${filePath.replace(/\\/g, '/')}`)
+    }
+
+    // Static Next.js export files
+    let filePath = path.join(outDir, urlPath)
+
+    // If path is a directory, try index.html
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+      filePath = path.join(filePath, 'index.html')
+    }
+
+    // If file doesn't exist, fall back to root index.html (client-side routing)
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(outDir, 'index.html')
+    }
+
+    return net.fetch(`file:///${filePath.replace(/\\/g, '/')}`)
+  })
+}
+
+// ─── IPC: Settings ────────────────────────────────────────────────────────────
+
+ipcMain.handle('settings:get', () => getSettings())
 
 ipcMain.handle('settings:set', (_, newSettings) => {
   store.set('settings', newSettings)
-  applyEnv() // apply immediately so next scan uses the new key
   return true
 })
 
 ipcMain.handle('app:userData', () => app.getPath('userData'))
 
-// ─── App lifecycle ───────────────────────────────────────────────────────────
+// ─── IPC: Binders ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(async () => {
-  ensureUserDataDirs()
+ipcMain.handle('binders:list', () => {
+  const { getBinders } = require('./db')
+  return getBinders()
+})
+
+ipcMain.handle('binders:get', (_, id) => {
+  const { getBinderById } = require('./db')
+  return getBinderById(id)
+})
+
+ipcMain.handle('binders:create', (_, data) => {
+  const { createBinder } = require('./db')
+  return createBinder(data)
+})
+
+ipcMain.handle('binders:update', (_, id, data) => {
+  const { updateBinder } = require('./db')
+  return updateBinder(id, data)
+})
+
+ipcMain.handle('binders:delete', (_, id) => {
+  const { deleteBinder } = require('./db')
+  deleteBinder(id)
+  // Also remove uploaded images for this binder
+  const binderUploads = getUserDataPath('uploads', id)
+  if (fs.existsSync(binderUploads)) {
+    fs.rmSync(binderUploads, { recursive: true, force: true })
+  }
+  return true
+})
+
+// ─── IPC: Pages ───────────────────────────────────────────────────────────────
+
+ipcMain.handle('pages:list', (_, binderId) => {
+  const { getPages } = require('./db')
+  return getPages(binderId)
+})
+
+ipcMain.handle('pages:get', (_, pageId) => {
+  const { getPageById } = require('./db')
+  return getPageById(pageId)
+})
+
+ipcMain.handle('pages:create', (_, data) => {
+  const { createPage } = require('./db')
+  return createPage(data)
+})
+
+ipcMain.handle('pages:update', (_, pageId, data) => {
+  const { updatePage } = require('./db')
+  return updatePage(pageId, data)
+})
+
+ipcMain.handle('pages:delete', (_, pageId) => {
+  const { deletePage } = require('./db')
+  const imagePath = deletePage(pageId)
+  // Delete the image file if there was one
+  if (imagePath) {
+    const abs = path.join(getUserDataPath('uploads'), imagePath.replace(/^uploads[/\\]?/, ''))
+    if (fs.existsSync(abs)) fs.unlinkSync(abs)
+  }
+  return true
+})
+
+ipcMain.handle('pages:reorder', (_, binderId, orderedIds) => {
+  const { reorderPages } = require('./db')
+  reorderPages(binderId, orderedIds)
+  return true
+})
+
+// ─── IPC: Cards ───────────────────────────────────────────────────────────────
+
+ipcMain.handle('cards:list', (_, binderId, pageId) => {
+  const { getCards } = require('./db')
+  return getCards(binderId, pageId || undefined)
+})
+
+ipcMain.handle('cards:create', (_, data) => {
+  const { createCard } = require('./db')
+  return createCard(data)
+})
+
+ipcMain.handle('cards:update', (_, id, data) => {
+  const { updateCard } = require('./db')
+  return updateCard(id, data)
+})
+
+ipcMain.handle('cards:delete', (_, id) => {
+  const { deleteCard } = require('./db')
+  deleteCard(id)
+  return true
+})
+
+ipcMain.handle('cards:refresh-prices', async (_, binderId) => {
+  const { getCardsForRefresh, updateCardPrices } = require('./db')
+  const { refreshCardPrices } = require('./tcg')
+  const settings = getSettings()
+  const tcgApiKey = settings.pokemonTcgApiKey || ''
+
+  const cards = getCardsForRefresh(binderId)
+  let updated = 0
+  for (const card of cards) {
+    try {
+      const prices = await refreshCardPrices(card.tcgApiId, card.condition, tcgApiKey)
+      if (prices) {
+        updateCardPrices(card.id, prices)
+        updated++
+      }
+    } catch { /* skip failed cards */ }
+  }
+  return { updated }
+})
+
+// ─── IPC: Image upload ────────────────────────────────────────────────────────
+
+ipcMain.handle('upload:image', (_, binderId, filename, arrayBuffer) => {
+  ensureDir('uploads', binderId)
+  const safeFilename = path.basename(filename)
+  const destPath = getUserDataPath('uploads', binderId, safeFilename)
+  const buffer = Buffer.from(arrayBuffer)
+  fs.writeFileSync(destPath, buffer)
+  // Return the relative path stored in DB (no leading slash)
+  return `uploads/${binderId}/${safeFilename}`
+})
+
+// ─── IPC: Scanning ────────────────────────────────────────────────────────────
+
+ipcMain.handle('scan:page', async (_, binderId, pageId, imagePath) => {
+  const { identifyCardsOnPage } = require('./scanner')
+  const { matchCard } = require('./tcg')
+  const { createCard, updatePage } = require('./db')
+
+  const settings = getSettings()
+  const geminiKey = settings.geminiApiKey || ''
+  const tcgApiKey = settings.pokemonTcgApiKey || ''
+
+  if (!geminiKey) throw new Error('Gemini API key not set. Go to Settings to add it.')
+
+  // Resolve absolute path from stored relative path
+  const absImagePath = imagePath.startsWith('uploads/')
+    ? getUserDataPath(imagePath)
+    : imagePath
+
+  const { cards: identified, rawText } = await identifyCardsOnPage(absImagePath, geminiKey)
+
+  // Update page with raw AI output
+  updatePage(pageId, {
+    rawAiOutput: rawText,
+    processedAt: new Date().toISOString(),
+    status: 'done',
+  })
+
+  const saved = []
+  for (const card of identified) {
+    let tcgData = null
+    try {
+      tcgData = await matchCard(card, tcgApiKey)
+    } catch { /* no TCG match */ }
+
+    const row = createCard({
+      binderId,
+      pageId,
+      tcgApiId: tcgData?.tcgApiId || `unmatched-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: tcgData?.name || card.name,
+      setId: tcgData?.setId || 'unknown',
+      setName: tcgData?.setName || card.setName || 'Unknown Set',
+      collectorNumber: tcgData?.collectorNumber || card.collectorNumber || '',
+      rarity: tcgData?.rarity || null,
+      imageUrl: tcgData?.imageUrl || null,
+      priceLow: tcgData?.priceLow ?? null,
+      priceMid: tcgData?.priceMid ?? null,
+      priceMarket: tcgData?.priceMarket ?? null,
+      priceHigh: tcgData?.priceHigh ?? null,
+      priceUpdatedAt: tcgData?.priceUpdatedAt ?? null,
+      quantity: card.quantity || 1,
+      condition: card.condition || null,
+      tradeList: false,
+    })
+    saved.push(row)
+  }
+
+  return { cards: saved, count: saved.length }
+})
+
+// ─── IPC: TCG card search ─────────────────────────────────────────────────────
+
+ipcMain.handle('tcg:search', async (_, query) => {
+  const { searchCards } = require('./tcg')
+  const settings = getSettings()
+  return searchCards(query, settings.pokemonTcgApiKey || '')
+})
+
+// ─── App lifecycle ────────────────────────────────────────────────────────────
+
+app.whenReady().then(() => {
+  ensureDir('uploads')
+
+  if (!isDev) {
+    registerAppProtocol()
+  }
+
   try {
-    await startNextServer()
+    initDatabase()
     createWindow()
   } catch (err) {
     console.error('Failed to start Pokemon Binder:', err)
-    // Show error in a dialog before quitting
-    const { dialog } = require('electron')
     dialog.showErrorBox('Failed to start', String(err))
     app.quit()
   }

@@ -17,16 +17,14 @@ export default function NewBinderPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || !window.electronAPI) return
     setLoading(true)
     try {
-      const res = await fetch('/api/binders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined }),
+      const binder = await window.electronAPI.createBinder({
+        name: name.trim(),
+        description: description.trim() || undefined,
       })
-      const data = await res.json()
-      router.push(`/binders/${data.id}`)
+      router.push(`/binder?id=${binder.id}`)
     } finally {
       setLoading(false)
     }

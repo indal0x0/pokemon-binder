@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, use } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -15,22 +15,20 @@ interface FileState {
   error?: string
 }
 
-export default function UploadPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: binderId } = use(params)
+export default function UploadPage() {
   const router = useRouter()
+  const binderId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('binderId') ?? ''
+    : ''
+
   const [files, setFiles] = useState<FileState[]>([])
   const [uploading, setUploading] = useState(false)
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
-    const arr = Array.from(newFiles)
-    const valid = arr.filter(f => f.type.startsWith('image/'))
+    const valid = Array.from(newFiles).filter(f => f.type.startsWith('image/'))
     setFiles(prev => [
       ...prev,
-      ...valid.map(f => ({
-        file: f,
-        preview: URL.createObjectURL(f),
-        status: 'pending' as const,
-      })),
+      ...valid.map(f => ({ file: f, preview: URL.createObjectURL(f), status: 'pending' as const })),
     ])
   }, [])
 
@@ -40,43 +38,49 @@ export default function UploadPage({ params }: { params: Promise<{ id: string }>
   }, [addFiles])
 
   async function handleUpload() {
-    if (!files.length || uploading) return
+    if (!files.length || uploading || !window.electronAPI) return
     setUploading(true)
 
-    const formData = new FormData()
-    files.forEach(f => formData.append('images', f.file))
+    let totalCards = 0
+    const updatedFiles = [...files]
 
-    try {
-      const res = await fetch(`/api/binders/${binderId}/pages/upload`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      try {
+        // 1. Create a pending page row
+        const page = await window.electronAPI.createPage({
+          binderId,
+          name: f.file.name.replace(/\.[^.]+$/, '') || `Page ${i + 1}`,
+          status: 'processing',
+        })
 
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
+        // 2. Upload the image file
+        const imagePath = await window.electronAPI.uploadImage(binderId, f.file)
 
-      const results: Array<{ pageId: string; cardsFound?: number; error?: string }> = data.results
-      setFiles(prev =>
-        prev.map((f, i) => ({
-          ...f,
-          status: results[i]?.error ? 'error' : 'done',
-          cardsFound: results[i]?.cardsFound,
-          error: results[i]?.error,
-        }))
-      )
+        // 3. Update page with image path
+        await window.electronAPI.updatePage(page.id, { imagePath } as Parameters<typeof window.electronAPI.updatePage>[1])
 
-      const totalCards = results.reduce((sum, r) => sum + (r.cardsFound || 0), 0)
-      toast.success(`Done! Found ${totalCards} cards across ${results.length} pages.`)
-      setTimeout(() => router.push(`/binders/${binderId}`), 1500)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed')
-      setUploading(false)
+        // 4. Run Gemini scan + TCG match
+        const result = await window.electronAPI.scanPage(binderId, page.id, imagePath)
+
+        updatedFiles[i] = { ...f, status: 'done', cardsFound: result.count }
+        totalCards += result.count
+      } catch (err) {
+        updatedFiles[i] = { ...f, status: 'error', error: err instanceof Error ? err.message : 'Failed' }
+        // Mark page as error if we have a pageId (scan failed after page was created)
+        toast.error(`Failed to scan ${f.file.name}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
+      setFiles([...updatedFiles])
     }
+
+    toast.success(`Done! Found ${totalCards} cards across ${files.length} page${files.length !== 1 ? 's' : ''}.`)
+    setUploading(false)
+    setTimeout(() => router.push(`/binder?id=${binderId}`), 1500)
   }
 
   return (
     <main className="min-h-screen p-6 max-w-3xl mx-auto">
-      <Link href={`/binders/${binderId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+      <Link href={`/binder?id=${binderId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to binder
       </Link>
 

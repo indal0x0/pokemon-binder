@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "electron:dev": "concurrently -k -n \"Next,Electron\" -c \"blue,green\" \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "npm run build && electron-builder --win && npm rebuild better-sqlite3",
+    "electron:build": "npm run build && electron-builder --win",
     "electron:preview": "wait-on http://localhost:3000 && electron ."
   },
   "build": {
@@ -27,9 +27,8 @@
     },
     "files": [
       "electron/**/*",
-      ".next/standalone/**/*",
-      ".next/static/**/*",
-      "public/**/*",
+      "out/**/*",
+      "node_modules/better-sqlite3/**/*",
       "node_modules/electron-store/**/*",
       "node_modules/conf/**/*",
       "node_modules/env-paths/**/*",

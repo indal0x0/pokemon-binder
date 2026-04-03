@@ -38,7 +38,7 @@ export default function SettingsPage() {
         pokemonTcgApiKey: tcgKey.trim(),
       })
       setSaved(true)
-      toast.success('Settings saved. Restart the app to apply new API keys.')
+      toast.success('Settings saved.')
       setTimeout(() => setSaved(false), 3000)
     } catch {
       toast.error('Failed to save settings')

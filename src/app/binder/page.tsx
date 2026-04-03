@@ -1,29 +1,39 @@
-import { notFound } from 'next/navigation'
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, Plus, Search } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
 import { PagesGallery } from '@/components/PagesGallery'
 import { formatCurrency } from '@/lib/utils'
+import type { BinderRow, PageRow, CardRow } from '@/types/electron'
 
-export const dynamic = 'force-dynamic'
+type FullBinder = BinderRow & { pages: PageRow[]; cards: CardRow[] }
 
-export default async function BinderPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const binder = await prisma.binder.findUnique({
-    where: { id },
-    include: {
-      pages: {
-        orderBy: { position: 'asc' },
-        include: { cards: { select: { id: true } } },
-      },
-      cards: { orderBy: { createdAt: 'asc' } },
-    },
-  })
+export default function BinderPage() {
+  const router = useRouter()
+  const [binder, setBinder] = useState<FullBinder | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (!binder) notFound()
+  const binderId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('id') ?? ''
+    : ''
+
+  const load = useCallback(async () => {
+    if (!binderId || !window.electronAPI) return
+    const data = await window.electronAPI.getBinder(binderId)
+    if (!data) { router.push('/'); return }
+    setBinder(data)
+    setLoading(false)
+  }, [binderId, router])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+  if (!binder) return null
 
   const totalValue = binder.cards.reduce((sum, c) => sum + (c.priceMarket || 0) * c.quantity, 0)
   const cardCount = binder.cards.reduce((sum, c) => sum + c.quantity, 0)
@@ -38,7 +48,7 @@ export default async function BinderPage({ params }: { params: Promise<{ id: str
           <h1 className="text-xl font-bold">{binder.name}</h1>
           {binder.description && <p className="text-sm text-muted-foreground">{binder.description}</p>}
         </div>
-        <BinderActions binderId={binder.id} />
+        <BinderActions binderId={binder.id} onRefresh={load} />
       </div>
 
       <div className="flex gap-4 mb-6">
@@ -57,16 +67,30 @@ export default async function BinderPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="flex gap-2 mb-6">
-        <Link href={`/binders/${binder.id}/upload`}>
+        <Link href={`/upload?binderId=${binder.id}`}>
           <Button size="sm">
             <Upload className="h-4 w-4 mr-2" />
             Upload Pages
           </Button>
         </Link>
+        <Link href={`/browse?binderId=${binder.id}`}>
+          <Button size="sm" variant="outline">
+            <Search className="h-4 w-4 mr-2" />
+            Browse Cards
+          </Button>
+        </Link>
+        <Button size="sm" variant="outline" onClick={async () => {
+          const name = `Page ${(binder.pages.length + 1)}`
+          await window.electronAPI?.createPage({ binderId: binder.id, name, status: 'manual' })
+          load()
+        }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Page
+        </Button>
       </div>
 
       {binder.pages.length > 0 && (
-        <PagesGallery pages={binder.pages} binderId={binder.id} />
+        <PagesGallery pages={binder.pages} binderId={binder.id} onRefresh={load} />
       )}
 
       {binder.cards.length === 0 ? (
@@ -76,7 +100,7 @@ export default async function BinderPage({ params }: { params: Promise<{ id: str
       ) : (
         <>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">All Cards</h2>
-          <BinderCardGrid cards={binder.cards} binderId={binder.id} />
+          <BinderCardGrid cards={binder.cards} binderId={binder.id} onRefresh={load} />
         </>
       )}
     </main>
