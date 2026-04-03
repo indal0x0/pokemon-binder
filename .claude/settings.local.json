@@ -43,7 +43,26 @@
       "Bash(mkdir -p \"D:/Claude Projects/Pokemon Binder Project/src/app/api/binders/[id]/cards/[cardId]\")",
       "Bash(mkdir -p \"D:/Claude Projects/Pokemon Binder Project/src/app/api/binders/[id]/refresh-prices\")",
       "Bash(npm run:*)",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(gh repo:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(\"D:/node20.19/node-v20.19.0-win-x64/npm.cmd\" uninstall:*)",
+      "Bash(\"D:/node20.19/node-v20.19.0-win-x64/npm.cmd\" install:*)",
+      "Bash(/c/Users/danie/node20.19/node-v20.19.0-win-x64/npm.cmd uninstall:*)",
+      "Bash(/c/Users/danie/node20.19/node-v20.19.0-win-x64/npm.cmd install:*)",
+      "Bash(/c/Users/danie/node20.19/node-v20.19.0-win-x64/npm.cmd run:*)",
+      "Bash(node -e ':*)",
+      "Bash(taskkill /PID 77504 /F)",
+      "Bash(xargs grep:*)",
+      "Bash(cat \"D:/Claude Projects/Pokemon Binder Project/.next/dev/lock/\"*)",
+      "Bash(rm:*)",
+      "Bash(node -e 'const s = require\\('\\\\''./node_modules/electron-store/package.json'\\\\''\\); console.log\\(s.version, s.type\\)')",
+      "Bash(node -e 'const s = require\\('\\\\''./node_modules/electron-store/package.json'\\\\''\\); console.log\\(s.version, s.type || '\\\\''commonjs'\\\\''\\)')",
+      "Bash(powershell:*)",
+      "Bash(npx electron-rebuild:*)",
+      "Bash(node electron/copy-native.js)",
+      "Bash(npx electron-builder:*)",
+      "Bash(npm rebuild:*)"
     ]
   }
 }
