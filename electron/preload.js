@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Fetch full pricing breakdown for a card (variants + cardmarket)
   getCardPrices: (tcgApiId) => ipcRenderer.invoke('tcg:get-card-prices', tcgApiId),
 
+  // Fetch market prices for multiple cards in parallel — returns { [tcgApiId]: FullCardPricing | null }
+  getCardPricesBatch: (tcgApiIds) => ipcRenderer.invoke('tcg:get-prices-batch', tcgApiIds),
+
   // Get the URL to display a stored image
   // imagePath is like "uploads/binderId/filename"
   getImageUrl: (imagePath) => {

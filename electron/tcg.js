@@ -118,6 +118,9 @@ async function searchCards(query, page = 1) {
     return { cards: [], hasMore: false }
   }
 
+  // Filter out TCG Pocket cards (set IDs start with "tcgp")
+  rawCards = rawCards.filter(card => !String(card.id || '').startsWith('tcgp'))
+
   // Fetch set info for all unique setIds in parallel
   const uniqueSetIds = [...new Set(rawCards.map(c => extractSetId(c.id)))]
   const setInfos = await Promise.all(uniqueSetIds.map(id => getSetInfo(id)))
@@ -148,6 +151,15 @@ async function searchCards(query, page = 1) {
   return { cards, hasMore: rawCards.length === PAGE_SIZE }
 }
 
+async function getCardPricesBatch(tcgApiIds) {
+  const results = await Promise.all(
+    tcgApiIds.map(id => getFullCardPricing(id).catch(() => null))
+  )
+  const map = {}
+  tcgApiIds.forEach((id, i) => { map[id] = results[i] })
+  return map
+}
+
 // Stub — AI scanning is disabled (Coming Soon)
 async function matchCard() {
   return null
@@ -157,4 +169,4 @@ async function refreshCardPrices(tcgApiId) {
   return fetchCardPrices(tcgApiId)
 }
 
-module.exports = { matchCard, searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing }
+module.exports = { matchCard, searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch }

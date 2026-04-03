@@ -2,8 +2,6 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import { Upload, ImageOff, Loader2 } from 'lucide-react'
 import type { CardRow, FullCardPricing } from '@/types/electron'
@@ -15,11 +13,11 @@ interface Props {
 }
 
 const CONDITIONS = [
-  { label: 'Near Mint',    short: 'NM',  pct: 1.00 },
-  { label: 'Lightly Played', short: 'LP', pct: 0.80 },
-  { label: 'Moderately Played', short: 'MP', pct: 0.60 },
-  { label: 'Heavily Played', short: 'HP', pct: 0.40 },
-  { label: 'Damaged',      short: 'DMG', pct: 0.20 },
+  { short: 'NM',  label: 'Near Mint',         pct: 1.00 },
+  { short: 'LP',  label: 'Lightly Played',     pct: 0.80 },
+  { short: 'MP',  label: 'Moderately Played',  pct: 0.60 },
+  { short: 'HP',  label: 'Heavily Played',     pct: 0.40 },
+  { short: 'DMG', label: 'Damaged',            pct: 0.20 },
 ]
 
 export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
@@ -33,6 +31,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
     if (!card) { setPricing(null); return }
     if (card.tcgApiId.startsWith('unmatched-')) return
     setLoadingPrices(true)
+    setPricing(null)
     window.electronAPI?.getCardPrices(card.tcgApiId)
       .then(p => setPricing(p))
       .catch(() => setPricing(null))
@@ -58,34 +57,18 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
     }
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) handleFile(file)
-  }
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) handleFile(file)
-  }
-
   const bestMarket = pricing?.bestMarket ?? card.priceMarket
 
   return (
     <Dialog open={!!card} onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden border-border/60 shadow-2xl bg-card gap-0">
-        <div className="flex flex-col sm:flex-row min-h-0">
+      <DialogContent className="max-w-4xl p-0 overflow-hidden border-border/60 shadow-2xl bg-card">
+        <div className="flex">
 
           {/* Left: card image */}
-          <div className="flex-shrink-0 sm:w-52 bg-background/50 flex items-center justify-center p-5">
+          <div className="flex-shrink-0 w-44 bg-background/50 flex items-center justify-center p-4">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt={card.name}
-                className="w-full aspect-[2.5/3.5] object-contain rounded-lg shadow-xl"
-              />
+              <img src={imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-contain rounded-lg shadow-lg" />
             ) : (
               <div
                 className={`w-full aspect-[2.5/3.5] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
@@ -94,152 +77,142 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
+                onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f) }}
               >
-                {uploading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                ) : (
-                  <>
-                    <ImageOff className="h-7 w-7 text-muted-foreground/40" />
-                    <div className="text-center px-2">
-                      <p className="text-xs text-muted-foreground leading-tight">No image</p>
-                      <p className="text-xs text-primary mt-1 flex items-center gap-1 justify-center">
-                        <Upload className="h-3 w-3" /> Upload
-                      </p>
-                    </div>
-                  </>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+                {uploading
+                  ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  : <>
+                      <ImageOff className="h-6 w-6 text-muted-foreground/30" />
+                      <p className="text-[10px] text-primary flex items-center gap-1"><Upload className="h-3 w-3" />Upload</p>
+                    </>
+                }
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
               </div>
             )}
           </div>
 
-          {/* Right: details + pricing */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Right: info + pricing */}
+          <div className="flex-1 min-w-0 flex flex-col p-4 gap-3">
+
             {/* Card identity */}
-            <div className="px-5 pt-5 pb-3 border-b border-border/40">
-              <h2 className="text-lg font-bold leading-tight">{card.name}</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{card.setName}</p>
-              <div className="flex flex-wrap gap-2 mt-2.5">
-                {card.collectorNumber && (
-                  <span className="text-xs bg-secondary px-2 py-0.5 rounded-md text-muted-foreground">#{card.collectorNumber}</span>
-                )}
-                {card.year && (
-                  <span className="text-xs bg-secondary px-2 py-0.5 rounded-md text-muted-foreground">{card.year}</span>
-                )}
-                {card.rarity && (
-                  <span className="text-xs bg-secondary px-2 py-0.5 rounded-md text-muted-foreground">{card.rarity}</span>
-                )}
-                {card.condition && (
-                  <Badge variant="outline" className="text-xs">{card.condition}</Badge>
-                )}
+            <div>
+              <h2 className="text-base font-bold leading-tight">{card.name}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{card.setName}</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {card.collectorNumber && <Tag>#{card.collectorNumber}</Tag>}
+                {card.year && <Tag>{card.year}</Tag>}
+                {card.rarity && <Tag>{card.rarity}</Tag>}
+                {card.condition && <Tag highlight>{card.condition}</Tag>}
               </div>
             </div>
 
-            {/* Pricing tabs */}
-            <div className="flex-1 overflow-y-auto px-5 py-3">
-              {loadingPrices ? (
-                <div className="flex items-center gap-2 text-muted-foreground text-xs py-4">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading prices...
+            {/* Pricing — three columns */}
+            {loadingPrices ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-xs py-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading prices...
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 flex-1">
+
+                {/* By Condition */}
+                <div className="bg-background/50 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">By Condition</p>
+                  {bestMarket ? (
+                    <div className="space-y-1">
+                      {CONDITIONS.map(c => (
+                        <div key={c.short} className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono text-muted-foreground w-7">{c.short}</span>
+                            <span className="text-[10px] text-muted-foreground/70 hidden xl:block">{c.label}</span>
+                          </div>
+                          <span className="text-xs font-semibold tabular-nums">{formatCurrency(bestMarket * c.pct)}</span>
+                        </div>
+                      ))}
+                      <p className="text-[9px] text-muted-foreground/40 mt-1.5">Est. from {formatCurrency(bestMarket)} NM</p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/50">No data</p>
+                  )}
                 </div>
-              ) : (
-                <Tabs defaultValue="condition">
-                  <TabsList className="h-8 mb-3">
-                    <TabsTrigger value="condition" className="text-xs h-7">By Condition</TabsTrigger>
-                    <TabsTrigger value="variants" className="text-xs h-7">TCGPlayer</TabsTrigger>
-                    <TabsTrigger value="cardmarket" className="text-xs h-7">Cardmarket</TabsTrigger>
-                  </TabsList>
 
-                  {/* Condition estimates */}
-                  <TabsContent value="condition" className="mt-0">
-                    {bestMarket ? (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-2">
-                          Estimated from {formatCurrency(bestMarket)} market price
-                        </p>
-                        {CONDITIONS.map(c => (
-                          <div key={c.short} className="flex items-center justify-between rounded-lg px-3 py-2 bg-background/60 hover:bg-background/80 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono text-muted-foreground w-9">{c.short}</span>
-                              <span className="text-xs text-muted-foreground">{c.label}</span>
-                            </div>
-                            <span className="text-sm font-semibold tabular-nums">{formatCurrency(bestMarket * c.pct)}</span>
+                {/* TCGPlayer variants */}
+                <div className="bg-background/50 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">TCGPlayer</p>
+                  {pricing?.variants && pricing.variants.length > 0 ? (
+                    <div className="space-y-2">
+                      {pricing.variants.map(v => (
+                        <div key={v.label}>
+                          <p className="text-[10px] text-muted-foreground/60 mb-0.5">{v.label}</p>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                            {[
+                              { l: 'Low', val: v.low },
+                              { l: 'Market', val: v.market },
+                              { l: 'Mid', val: v.mid },
+                              { l: 'High', val: v.high },
+                            ].map(({ l, val }) => (
+                              <div key={l} className="flex items-center justify-between">
+                                <span className="text-[9px] text-muted-foreground/50">{l}</span>
+                                <span className={`text-[10px] font-semibold tabular-nums ${l === 'Market' ? 'text-primary' : ''}`}>
+                                  {val ? formatCurrency(val) : '—'}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground py-4">No price data available</p>
-                    )}
-                  </TabsContent>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/50">No data</p>
+                  )}
+                </div>
 
-                  {/* TCGPlayer variants */}
-                  <TabsContent value="variants" className="mt-0">
-                    {pricing?.variants && pricing.variants.length > 0 ? (
-                      <div className="space-y-2">
-                        {pricing.variants.map(v => (
-                          <div key={v.label} className="rounded-lg bg-background/60 px-3 py-2.5">
-                            <p className="text-xs font-semibold mb-2">{v.label}</p>
-                            <div className="grid grid-cols-4 gap-1">
-                              {[
-                                { label: 'Low', value: v.low },
-                                { label: 'Mid', value: v.mid },
-                                { label: 'Market', value: v.market },
-                                { label: 'High', value: v.high },
-                              ].map(({ label, value }) => (
-                                <div key={label} className={`text-center rounded p-1.5 ${label === 'Market' ? 'bg-primary/10' : ''}`}>
-                                  <p className="text-[10px] text-muted-foreground">{label}</p>
-                                  <p className={`text-xs font-semibold tabular-nums ${label === 'Market' ? 'text-primary' : ''}`}>
-                                    {value ? formatCurrency(value) : '—'}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground py-4">No TCGPlayer data available</p>
-                    )}
-                  </TabsContent>
+                {/* Cardmarket */}
+                <div className="bg-background/50 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">Cardmarket <span className="normal-case">(EUR)</span></p>
+                  {pricing?.cardmarket ? (
+                    <div className="space-y-1">
+                      {[
+                        { label: 'Average',  value: pricing.cardmarket.avg },
+                        { label: 'Low',      value: pricing.cardmarket.low },
+                        { label: 'Trend',    value: pricing.cardmarket.trend },
+                        { label: '7-Day',    value: pricing.cardmarket.avg7 },
+                        { label: '30-Day',   value: pricing.cardmarket.avg30 },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground/70">{label}</span>
+                          <span className="text-xs font-semibold tabular-nums">
+                            {value != null ? `€${value.toFixed(2)}` : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/50">No data</p>
+                  )}
+                </div>
 
-                  {/* Cardmarket */}
-                  <TabsContent value="cardmarket" className="mt-0">
-                    {pricing?.cardmarket ? (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-2">Prices in EUR</p>
-                        {[
-                          { label: 'Average', value: pricing.cardmarket.avg },
-                          { label: 'Low', value: pricing.cardmarket.low },
-                          { label: 'Trend', value: pricing.cardmarket.trend },
-                          { label: '7-Day Avg', value: pricing.cardmarket.avg7 },
-                          { label: '30-Day Avg', value: pricing.cardmarket.avg30 },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="flex items-center justify-between rounded-lg px-3 py-2 bg-background/60">
-                            <span className="text-xs text-muted-foreground">{label}</span>
-                            <span className="text-sm font-semibold tabular-nums">
-                              {value != null ? `€${value.toFixed(2)}` : '—'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground py-4">No Cardmarket data available</p>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              )}
-            </div>
+              </div>
+            )}
 
             {card.priceUpdatedAt && (
-              <div className="px-5 pb-3 pt-1">
-                <p className="text-[10px] text-muted-foreground/40">
-                  Prices as of {new Date(card.priceUpdatedAt).toLocaleDateString()}
-                </p>
-              </div>
+              <p className="text-[9px] text-muted-foreground/30">
+                Prices as of {new Date(card.priceUpdatedAt).toLocaleDateString()}
+              </p>
             )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function Tag({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+      highlight ? 'border border-border text-foreground' : 'bg-secondary text-muted-foreground'
+    }`}>
+      {children}
+    </span>
   )
 }

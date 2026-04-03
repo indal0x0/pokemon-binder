@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,9 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, ArrowUpDown, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
-import type { CardRow, TcgCardResult } from '@/types/electron'
+import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { formatCurrency } from '@/lib/utils'
 
@@ -69,6 +68,8 @@ export default function PageDetailPage() {
   const [hasMore, setHasMore] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState(false)
+  const [searchPrices, setSearchPrices] = useState<Record<string, FullCardPricing | null>>({})
+  const [fetchingPrices, setFetchingPrices] = useState(false)
 
   // Search panel sort + filter
   const [sortMode, setSortMode] = useState<SortMode>('default')
@@ -121,10 +122,19 @@ export default function PageDetailPage() {
     currentQueryRef.current = q.trim()
     setSearching(true)
     setSearchPage(1)
+    setSearchPrices({})
     try {
       const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), 1)
       setSearchResults(cards)
       setHasMore(more)
+      // Fetch prices for all results in parallel
+      if (cards.length > 0) {
+        setFetchingPrices(true)
+        window.electronAPI.getCardPricesBatch(cards.map(c => c.tcgApiId))
+          .then(prices => setSearchPrices(prices))
+          .catch(() => {})
+          .finally(() => setFetchingPrices(false))
+      }
     } catch {
       toast.error('Search failed')
     } finally {
@@ -337,8 +347,6 @@ export default function PageDetailPage() {
   const totalSlots = cols * rows
 
   // Use page.binderId as fallback if URL param wasn't captured yet
-  const effectiveBinderId = binderId || page.binderId
-
   const slots: (CardRow | null)[] = Array(totalSlots).fill(null)
   cards.forEach((card, i) => {
     if (i < totalSlots) slots[i] = card
@@ -357,9 +365,12 @@ export default function PageDetailPage() {
       {/* Header */}
       <div className="border-b bg-background z-10 flex-shrink-0">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
-          <Link href={`/binder?id=${effectiveBinderId}`} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => router.push(`/binder?id=${page.binderId}`)}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
-          </Link>
+          </button>
           <h1 className="font-semibold flex-1 truncate">{page.name}</h1>
           <button
             onClick={openEditDims}
@@ -615,11 +626,16 @@ export default function PageDetailPage() {
                       {card.collectorNumber && (
                         <p className="text-xs text-muted-foreground/60">#{card.collectorNumber}</p>
                       )}
-                      {card.priceMarket ? (
-                        <p className="text-xs font-semibold text-primary mt-1">{formatCurrency(card.priceMarket)}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground/40 mt-1">No price</p>
-                      )}
+                      {(() => {
+                        const fetched = searchPrices[card.tcgApiId]
+                        const market = fetched?.bestMarket ?? card.priceMarket
+                        if (fetchingPrices && fetched === undefined) {
+                          return <p className="text-xs text-muted-foreground/40 mt-1 flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" />Fetching...</p>
+                        }
+                        return market
+                          ? <p className="text-xs font-semibold text-primary mt-1">{formatCurrency(market)}</p>
+                          : <p className="text-xs text-muted-foreground/40 mt-1">No price</p>
+                      })()}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                       selected ? 'bg-primary border-primary' : 'border-border'

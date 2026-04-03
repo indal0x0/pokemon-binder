@@ -304,6 +304,11 @@ ipcMain.handle('tcg:get-card-prices', async (_, tcgApiId) => {
   return getFullCardPricing(tcgApiId)
 })
 
+ipcMain.handle('tcg:get-prices-batch', async (_, tcgApiIds) => {
+  const { getCardPricesBatch } = require('./tcg')
+  return getCardPricesBatch(tcgApiIds)
+})
+
 // ─── IPC: Card custom image upload ───────────────────────────────────────────
 
 ipcMain.handle('cards:upload-card-image', (_, cardId, binderId, filename, arrayBuffer) => {

@@ -130,6 +130,7 @@ interface ElectronAPI {
   updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null }): Promise<CardRow>
   uploadCardImage(cardId: string, binderId: string, file: File): Promise<CardRow>
   getCardPrices(tcgApiId: string): Promise<FullCardPricing | null>
+  getCardPricesBatch(tcgApiIds: string[]): Promise<Record<string, FullCardPricing | null>>
   deleteCard(id: string): Promise<boolean>
   refreshPrices(binderId: string): Promise<{ updated: number }>
 
