@@ -85,7 +85,7 @@ export default function UploadPage() {
       </Link>
 
       <h1 className="text-xl font-bold mb-1">Upload Binder Pages</h1>
-      <p className="text-sm text-muted-foreground mb-6">Photos are analyzed by AI to identify and value each card</p>
+      <p className="text-sm text-muted-foreground mb-6">Upload photos of your binder pages</p>
 
       <div
         onDrop={onDrop}
@@ -136,13 +136,15 @@ export default function UploadPage() {
       )}
 
       {files.length > 0 && (
-        <Button onClick={handleUpload} disabled={uploading} className="w-full">
-          {uploading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Scanning {files.length} page{files.length !== 1 ? 's' : ''}...</>
-          ) : (
-            <><Upload className="h-4 w-4 mr-2" /> Scan {files.length} Page{files.length !== 1 ? 's' : ''}</>
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button className="w-full" disabled>
+            <Upload className="h-4 w-4 mr-2" />
+            Scan Pages — Coming Soon
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            AI scanning is coming soon. Add cards to your pages using the Card Browser.
+          </p>
+        </div>
       )}
     </main>
   )

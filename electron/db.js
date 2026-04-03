@@ -41,6 +41,8 @@ function initDb(Database, dbPath) {
       rawAiOutput  TEXT,
       processedAt  TEXT,
       status       TEXT NOT NULL DEFAULT 'pending',
+      cols         INTEGER NOT NULL DEFAULT 3,
+      rows         INTEGER NOT NULL DEFAULT 3,
       createdAt    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -63,6 +65,7 @@ function initDb(Database, dbPath) {
       quantity        INTEGER NOT NULL DEFAULT 1,
       condition       TEXT,
       tradeList       INTEGER NOT NULL DEFAULT 0,
+      position        INTEGER,
       createdAt       TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt       TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -72,7 +75,10 @@ function initDb(Database, dbPath) {
   const migrations = [
     `ALTER TABLE pages ADD COLUMN position INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE pages ADD COLUMN name TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE pages ADD COLUMN cols INTEGER NOT NULL DEFAULT 3`,
+    `ALTER TABLE pages ADD COLUMN rows INTEGER NOT NULL DEFAULT 3`,
     `ALTER TABLE binder_cards ADD COLUMN tradeList INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE binder_cards ADD COLUMN position INTEGER`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -132,32 +138,34 @@ function getPages(binderId) {
 function getPageById(pageId) {
   const page = db.prepare('SELECT * FROM pages WHERE id = ?').get(pageId)
   if (!page) return null
-  const cards = db.prepare('SELECT * FROM binder_cards WHERE pageId = ? ORDER BY createdAt ASC').all(pageId)
+  const cards = db.prepare('SELECT * FROM binder_cards WHERE pageId = ? ORDER BY COALESCE(position, 9999) ASC, createdAt ASC').all(pageId)
   return { ...page, cards }
 }
 
-function createPage({ binderId, name, imagePath, status }) {
+function createPage({ binderId, name, imagePath, status, cols, rows }) {
   const id = uid()
   const ts = now()
   const count = db.prepare('SELECT COUNT(*) as c FROM pages WHERE binderId = ?').get(binderId).c
   const pageNumber = count + 1
   db.prepare(`
-    INSERT INTO pages (id, binderId, pageNumber, position, name, imagePath, status, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, binderId, pageNumber, pageNumber, name || `Page ${pageNumber}`, imagePath || '', status || 'pending', ts)
+    INSERT INTO pages (id, binderId, pageNumber, position, name, imagePath, status, cols, rows, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, binderId, pageNumber, pageNumber, name || `Page ${pageNumber}`, imagePath || '', status || 'pending', cols || 3, rows || 3, ts)
   return db.prepare('SELECT * FROM pages WHERE id = ?').get(id)
 }
 
-function updatePage(id, { name, position, status, rawAiOutput, processedAt }) {
+function updatePage(id, { name, position, status, rawAiOutput, processedAt, cols, rows }) {
   db.prepare(`
     UPDATE pages SET
       name         = COALESCE(?, name),
       position     = COALESCE(?, position),
       status       = COALESCE(?, status),
       rawAiOutput  = COALESCE(?, rawAiOutput),
-      processedAt  = COALESCE(?, processedAt)
+      processedAt  = COALESCE(?, processedAt),
+      cols         = COALESCE(?, cols),
+      rows         = COALESCE(?, rows)
     WHERE id = ?
-  `).run(name ?? null, position ?? null, status ?? null, rawAiOutput ?? null, processedAt ?? null, id)
+  `).run(name ?? null, position ?? null, status ?? null, rawAiOutput ?? null, processedAt ?? null, cols ?? null, rows ?? null, id)
   return db.prepare('SELECT * FROM pages WHERE id = ?').get(id)
 }
 
@@ -179,19 +187,26 @@ function reorderPages(binderId, orderedIds) {
 
 function getCards(binderId, pageId) {
   if (pageId) {
-    return db.prepare('SELECT * FROM binder_cards WHERE binderId = ? AND pageId = ? ORDER BY createdAt ASC').all(binderId, pageId)
+    return db.prepare('SELECT * FROM binder_cards WHERE binderId = ? AND pageId = ? ORDER BY COALESCE(position, 9999) ASC, createdAt ASC').all(binderId, pageId)
   }
   return db.prepare('SELECT * FROM binder_cards WHERE binderId = ? ORDER BY createdAt ASC').all(binderId)
 }
 
 function createCard(data) {
+  // Auto-assign position if card belongs to a page and no position given
+  let position = data.position ?? null
+  if (data.pageId && position === null) {
+    const existing = db.prepare('SELECT COUNT(*) as c FROM binder_cards WHERE pageId = ?').get(data.pageId)
+    position = existing.c
+  }
+
   const id = uid()
   const ts = now()
   db.prepare(`
     INSERT INTO binder_cards
       (id, binderId, pageId, tcgApiId, name, setId, setName, collectorNumber, rarity, imageUrl,
-       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, data.binderId, data.pageId ?? null, data.tcgApiId, data.name,
     data.setId || 'unknown', data.setName || 'Unknown Set', data.collectorNumber || '',
@@ -199,6 +214,7 @@ function createCard(data) {
     data.priceLow ?? null, data.priceMid ?? null, data.priceMarket ?? null, data.priceHigh ?? null,
     data.priceUpdatedAt ?? null,
     data.quantity ?? 1, data.condition ?? null, data.tradeList ? 1 : 0,
+    position,
     ts, ts
   )
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
@@ -235,9 +251,27 @@ function updateCardPrices(id, prices) {
   `).run(prices.priceLow, prices.priceMid, prices.priceMarket, prices.priceHigh, prices.priceUpdatedAt, now(), id)
 }
 
+function reorderPageCards(pageId, positions) {
+  // positions: [{id, position}]
+  const update = db.prepare('UPDATE binder_cards SET position = ?, updatedAt = ? WHERE id = ? AND pageId = ?')
+  const ts = now()
+  const updateMany = db.transaction((items) => {
+    for (const { id, position } of items) {
+      update.run(position, ts, id, pageId)
+    }
+  })
+  updateMany(positions)
+}
+
+function moveCard(cardId, pageId, position) {
+  db.prepare('UPDATE binder_cards SET pageId = ?, position = ?, updatedAt = ? WHERE id = ?')
+    .run(pageId, position, now(), cardId)
+}
+
 module.exports = {
   initDb,
   getBinders, getBinderById, createBinder, updateBinder, deleteBinder,
   getPages, getPageById, createPage, updatePage, deletePage, reorderPages,
   getCards, createCard, updateCard, deleteCard, getCardsForRefresh, updateCardPrices,
+  reorderPageCards, moveCard,
 }

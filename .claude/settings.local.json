@@ -62,7 +62,11 @@
       "Bash(npx electron-rebuild:*)",
       "Bash(node electron/copy-native.js)",
       "Bash(npx electron-builder:*)",
-      "Bash(npm rebuild:*)"
+      "Bash(npm rebuild:*)",
+      "WebFetch(domain:tcgdex.dev)",
+      "WebFetch(domain:api.tcgdex.net)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)"
     ]
   }
 }

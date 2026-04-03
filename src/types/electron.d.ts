@@ -24,6 +24,8 @@ export interface PageRow {
   rawAiOutput: string | null
   processedAt: string | null
   status: string
+  cols: number
+  rows: number
   createdAt: string
   cardCount?: number
   cards?: CardRow[]
@@ -48,6 +50,7 @@ export interface CardRow {
   quantity: number
   condition: string | null
   tradeList: number
+  position: number | null
   createdAt: string
   updatedAt: string
 }
@@ -82,10 +85,12 @@ interface ElectronAPI {
 
   listPages(binderId: string): Promise<PageRow[]>
   getPage(pageId: string): Promise<(PageRow & { cards: CardRow[] }) | null>
-  createPage(data: { binderId: string; name?: string; imagePath?: string; status?: string }): Promise<PageRow>
-  updatePage(pageId: string, data: { name?: string; position?: number; status?: string; rawAiOutput?: string; processedAt?: string }): Promise<PageRow>
+  createPage(data: { binderId: string; name?: string; imagePath?: string; status?: string; cols?: number; rows?: number }): Promise<PageRow>
+  updatePage(pageId: string, data: { name?: string; position?: number; status?: string; rawAiOutput?: string; processedAt?: string; cols?: number; rows?: number }): Promise<PageRow>
   deletePage(pageId: string): Promise<boolean>
   reorderPages(binderId: string, orderedIds: string[]): Promise<boolean>
+  reorderPageCards(pageId: string, positions: Array<{ id: string; position: number }>): Promise<boolean>
+  moveCardsToPage(cardIds: string[], targetPageId: string): Promise<boolean>
 
   listCards(binderId: string, pageId?: string): Promise<CardRow[]>
   createCard(data: Partial<CardRow>): Promise<CardRow>

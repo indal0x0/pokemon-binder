@@ -202,6 +202,18 @@ ipcMain.handle('pages:reorder', (_, binderId, orderedIds) => {
   return true
 })
 
+ipcMain.handle('pages:reorder-cards', (_, pageId, positions) => {
+  const { reorderPageCards } = require('./db')
+  reorderPageCards(pageId, positions)
+  return true
+})
+
+ipcMain.handle('pages:move-cards', (_, cardIds, targetPageId) => {
+  const { moveCard } = require('./db')
+  cardIds.forEach((cardId, idx) => moveCard(cardId, targetPageId, idx))
+  return true
+})
+
 // ─── IPC: Cards ───────────────────────────────────────────────────────────────
 
 ipcMain.handle('cards:list', (_, binderId, pageId) => {

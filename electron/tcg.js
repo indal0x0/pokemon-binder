@@ -1,158 +1,56 @@
 /**
- * Pokemon TCG API client for the Electron main process.
- * Matches identified cards to TCG database entries and fetches prices.
+ * TCGDex API client for the Electron main process.
+ * Free, no API key required. No price data available.
  */
 
-const TCG_BASE = 'https://api.pokemontcg.io/v2'
+const TCGDEX_BASE = 'https://api.tcgdex.net/v2/en'
 
-async function tcgFetch(url, apiKey) {
-  const headers = {}
-  if (apiKey) headers['X-Api-Key'] = apiKey
+async function searchCards(query) {
+  if (!query || query.trim().length < 2) return []
 
-  const response = await fetch(url, { headers })
-  if (!response.ok) {
-    throw new Error(`TCG API error ${response.status}: ${url}`)
+  const url = `${TCGDEX_BASE}/cards?name=${encodeURIComponent(query.trim())}&pagination:itemsPerPage=24`
+
+  let cards
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return []
+    cards = await response.json()
+    if (!Array.isArray(cards)) return []
+  } catch {
+    return []
   }
-  return response.json()
+
+  return cards.map(card => {
+    // Card IDs follow the format {setId}-{localId} e.g. "swsh3-136"
+    const lastDash = (card.id || '').lastIndexOf('-')
+    const setId = lastDash > 0 ? card.id.slice(0, lastDash) : 'unknown'
+    const imageUrl = card.image ? `${card.image}/high.png` : null
+
+    return {
+      tcgApiId: card.id || `unknown-${Math.random().toString(36).slice(2)}`,
+      name: card.name || 'Unknown Card',
+      setId,
+      setName: setId,
+      collectorNumber: String(card.localId || ''),
+      rarity: null,
+      imageUrl,
+      priceLow: null,
+      priceMid: null,
+      priceMarket: null,
+      priceHigh: null,
+      priceUpdatedAt: null,
+    }
+  })
 }
 
-function buildQuery(params) {
-  const parts = []
-  for (const [key, value] of Object.entries(params)) {
-    if (value) parts.push(`${key}:"${value.replace(/"/g, '\\"')}"`)
-  }
-  return parts.join(' ')
-}
-
-function extractBestPrice(card, notes) {
-  const prices = card.tcgplayer?.prices
-  if (!prices) return null
-
-  const n = (notes || '').toLowerCase()
-  const isHolo = n.includes('holo') && !n.includes('reverse')
-  const isReverse = n.includes('reverse')
-  const is1st = n.includes('1st edition') || n.includes('first edition')
-
-  let variant = null
-  if (is1st && prices['1stEditionHolofoil']) variant = '1stEditionHolofoil'
-  else if (is1st && prices['1stEdition']) variant = '1stEdition'
-  else if (isHolo && prices.holofoil) variant = 'holofoil'
-  else if (isReverse && prices.reverseHolofoil) variant = 'reverseHolofoil'
-  else if (prices.normal) variant = 'normal'
-  else if (prices.holofoil) variant = 'holofoil'
-  else variant = Object.keys(prices)[0]
-
-  if (!variant) return null
-  const p = prices[variant]
-  return {
-    priceLow: p.low ?? null,
-    priceMid: p.mid ?? null,
-    priceMarket: p.market ?? null,
-    priceHigh: p.high ?? null,
-  }
-}
-
-async function matchCard(identified, apiKey) {
-  const { name, setName, collectorNumber, notes } = identified
-
-  // Attempt 1: name + collector number
-  if (name && collectorNumber) {
-    try {
-      const q = buildQuery({ name, number: collectorNumber })
-      const data = await tcgFetch(`${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=5`, apiKey)
-      if (data.data?.length > 0) {
-        const card = data.data[0]
-        return buildResult(card, notes)
-      }
-    } catch { /* fall through */ }
-  }
-
-  // Attempt 2: name + set name
-  if (name && setName) {
-    try {
-      const q = buildQuery({ name, 'set.name': setName })
-      const data = await tcgFetch(`${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=5`, apiKey)
-      if (data.data?.length > 0) {
-        const card = data.data[0]
-        return buildResult(card, notes)
-      }
-    } catch { /* fall through */ }
-  }
-
-  // Attempt 3: name only, sorted by highest market price
-  if (name) {
-    try {
-      const q = buildQuery({ name })
-      const data = await tcgFetch(
-        `${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=20&orderBy=-tcgplayer.prices.holofoil.market`,
-        apiKey,
-      )
-      if (data.data?.length > 0) {
-        // Pick the card with highest market price
-        let best = data.data[0]
-        let bestPrice = 0
-        for (const c of data.data) {
-          const prices = c.tcgplayer?.prices
-          if (!prices) continue
-          const market = Object.values(prices).find((p) => p?.market)?.market || 0
-          if (market > bestPrice) {
-            bestPrice = market
-            best = c
-          }
-        }
-        return buildResult(best, notes)
-      }
-    } catch { /* fall through */ }
-  }
-
+// Stub — AI scanning is disabled (Coming Soon)
+async function matchCard() {
   return null
 }
 
-function buildResult(card, notes) {
-  const priceData = extractBestPrice(card, notes)
-  return {
-    tcgApiId: card.id,
-    name: card.name,
-    setId: card.set?.id || 'unknown',
-    setName: card.set?.name || 'Unknown Set',
-    collectorNumber: card.number || '',
-    rarity: card.rarity || null,
-    imageUrl: card.images?.small || null,
-    priceLow: priceData?.priceLow ?? null,
-    priceMid: priceData?.priceMid ?? null,
-    priceMarket: priceData?.priceMarket ?? null,
-    priceHigh: priceData?.priceHigh ?? null,
-    priceUpdatedAt: priceData ? new Date().toISOString() : null,
-  }
-}
-
-async function searchCards(query, apiKey) {
-  if (!query || query.trim().length < 2) return []
-  const q = `name:"${query.replace(/"/g, '\\"')}*"`
-  const data = await tcgFetch(
-    `${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=30&orderBy=name`,
-    apiKey,
-  )
-  return (data.data || []).map((card) => ({
-    tcgApiId: card.id,
-    name: card.name,
-    setId: card.set?.id || 'unknown',
-    setName: card.set?.name || 'Unknown Set',
-    collectorNumber: card.number || '',
-    rarity: card.rarity || null,
-    imageUrl: card.images?.small || null,
-    ...extractBestPrice(card, null),
-    priceUpdatedAt: new Date().toISOString(),
-  }))
-}
-
-async function refreshCardPrices(tcgApiId, notes, apiKey) {
-  const data = await tcgFetch(`${TCG_BASE}/cards/${encodeURIComponent(tcgApiId)}`, apiKey)
-  const card = data.data
-  if (!card) return null
-  const priceData = extractBestPrice(card, notes)
-  if (!priceData) return null
-  return { ...priceData, priceUpdatedAt: new Date().toISOString() }
+// Stub — TCGDex has no price data
+async function refreshCardPrices() {
+  return null
 }
 
 module.exports = { matchCard, searchCards, refreshCardPrices }

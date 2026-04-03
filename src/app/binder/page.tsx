@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Upload, Plus, Search } from 'lucide-react'
+import { ArrowLeft, Upload, Search } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
 import { PagesGallery } from '@/components/PagesGallery'
@@ -69,37 +69,23 @@ export default function BinderPage() {
       </div>
 
       <div className="flex gap-2 mb-6">
-        <Link href={`/upload?binderId=${binder.id}`}>
-          <Button size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Pages
-          </Button>
-        </Link>
         <Link href={`/browse?binderId=${binder.id}`}>
-          <Button size="sm" variant="outline">
+          <Button size="sm">
             <Search className="h-4 w-4 mr-2" />
             Browse Cards
           </Button>
         </Link>
-        <Button size="sm" variant="outline" onClick={async () => {
-          const name = `Page ${(binder.pages.length + 1)}`
-          await window.electronAPI?.createPage({ binderId: binder.id, name, status: 'manual' })
-          load()
-        }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Page
-        </Button>
+        <Link href={`/upload?binderId=${binder.id}`}>
+          <Button size="sm" variant="outline">
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Pages
+          </Button>
+        </Link>
       </div>
 
-      {binder.pages.length > 0 && (
-        <PagesGallery pages={binder.pages} binderId={binder.id} onRefresh={load} />
-      )}
+      <PagesGallery pages={binder.pages} binderId={binder.id} onRefresh={load} />
 
-      {binder.cards.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-sm">No cards yet. Upload binder page photos to get started.</p>
-        </div>
-      ) : (
+      {binder.cards.length > 0 && (
         <>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">All Cards</h2>
           <BinderCardGrid cards={binder.cards} binderId={binder.id} onRefresh={load} />

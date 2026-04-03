@@ -1,82 +1,571 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { BinderCardGrid } from '@/components/BinderCardGrid'
-import type { PageRow, CardRow } from '@/types/electron'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import type { CardRow, TcgCardResult } from '@/types/electron'
 
-type FullPage = PageRow & { cards: CardRow[] }
+const DIMENSION_PRESETS = [
+  { label: '1×1', cols: 1, rows: 1 },
+  { label: '2×1', cols: 2, rows: 1 },
+  { label: '2×2', cols: 2, rows: 2 },
+  { label: '3×3', cols: 3, rows: 3 },
+  { label: '3×4', cols: 3, rows: 4 },
+  { label: '4×4', cols: 4, rows: 4 },
+]
+
+interface PageData {
+  id: string
+  binderId: string
+  name: string
+  pageNumber: number
+  cols: number
+  rows: number
+  status: string
+  cards: CardRow[]
+}
 
 export default function PageDetailPage() {
   const router = useRouter()
-  const [page, setPage] = useState<FullPage | null>(null)
+
+  // Read URL params after mount (reliable in static export)
+  const [pageId, setPageId] = useState('')
+  const [binderId, setBinderId] = useState('')
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setPageId(params.get('id') ?? '')
+    setBinderId(params.get('binderId') ?? '')
+  }, [])
+
+  const [page, setPage] = useState<PageData | null>(null)
+  const [cards, setCards] = useState<CardRow[]>([])
   const [loading, setLoading] = useState(true)
 
-  const params = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search)
-    : new URLSearchParams()
-  const pageId = params.get('id') ?? ''
-  const binderId = params.get('binderId') ?? ''
+  // Slide-in card search panel
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<TcgCardResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
+  const [adding, setAdding] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Edit dimensions dialog
+  const [editDimsOpen, setEditDimsOpen] = useState(false)
+  const [dimsPreset, setDimsPreset] = useState('3×3')
+  const [dimsCustomCols, setDimsCustomCols] = useState(3)
+  const [dimsCustomRows, setDimsCustomRows] = useState(3)
+  const [savingDims, setSavingDims] = useState(false)
+
+  // Drag-and-drop
+  const dragFromIdx = useRef<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+
+  // ─── Load page ───────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!pageId || !window.electronAPI) { setLoading(false); return }
+    if (!pageId || !window.electronAPI) return
     try {
       const data = await window.electronAPI.getPage(pageId)
       if (!data) { router.push('/'); return }
-      setPage(data)
+      setPage(data as PageData)
+      setCards(data.cards ?? [])
       setLoading(false)
-    } catch { setLoading(false) }
+    } catch {
+      setLoading(false)
+    }
   }, [pageId, router])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (pageId) load()
+  }, [pageId, load])
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+  // ─── Card search panel ───────────────────────────────────────────────────────
+
+  const runSearch = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      const data = await window.electronAPI.searchTcg(q.trim())
+      setSearchResults(data)
+    } catch {
+      toast.error('Search failed')
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => runSearch(value), 400)
+  }
+
+  function toggleCardSelection(tcgApiId: string) {
+    setSelectedCards(prev => {
+      const next = new Set(prev)
+      if (next.has(tcgApiId)) next.delete(tcgApiId)
+      else next.add(tcgApiId)
+      return next
+    })
+  }
+
+  async function addSelectedCards() {
+    if (!window.electronAPI || selectedCards.size === 0 || !page) return
+    setAdding(true)
+    const toAdd = searchResults.filter(c => selectedCards.has(c.tcgApiId))
+    let nextPos = cards.length
+    try {
+      for (const card of toAdd) {
+        await window.electronAPI.createCard({
+          binderId,
+          pageId,
+          tcgApiId: card.tcgApiId,
+          name: card.name,
+          setId: card.setId,
+          setName: card.setName,
+          collectorNumber: card.collectorNumber,
+          rarity: card.rarity ?? undefined,
+          imageUrl: card.imageUrl ?? undefined,
+          quantity: 1,
+          tradeList: 0,
+          position: nextPos++,
+        } as Parameters<typeof window.electronAPI.createCard>[0])
+      }
+      toast.success(`Added ${toAdd.length} card${toAdd.length !== 1 ? 's' : ''}`)
+      setSelectedCards(new Set())
+      setPanelOpen(false)
+      setSearchQuery('')
+      setSearchResults([])
+      await load()
+    } catch {
+      toast.error('Failed to add cards')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function deleteCard(cardId: string) {
+    if (!window.electronAPI) return
+    try {
+      await window.electronAPI.deleteCard(cardId)
+      setCards(prev => prev.filter(c => c.id !== cardId))
+    } catch {
+      toast.error('Failed to delete card')
+    }
+  }
+
+  // ─── Drag-and-drop ───────────────────────────────────────────────────────────
+
+  function onDragStart(e: React.DragEvent, slotIdx: number) {
+    dragFromIdx.current = slotIdx
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function onDragOver(e: React.DragEvent, slotIdx: number) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIdx(slotIdx)
+  }
+
+  function onDragLeave() {
+    setDragOverIdx(null)
+  }
+
+  function onDrop(e: React.DragEvent, toIdx: number) {
+    e.preventDefault()
+    setDragOverIdx(null)
+    const fromIdx = dragFromIdx.current
+    dragFromIdx.current = null
+
+    if (fromIdx === null || fromIdx === toIdx || fromIdx >= cards.length) return
+
+    const newCards = [...cards]
+    const [moved] = newCards.splice(fromIdx, 1)
+    const insertAt = Math.min(toIdx, newCards.length)
+    newCards.splice(insertAt, 0, moved)
+    setCards(newCards)
+
+    const positions = newCards.map((card, idx) => ({ id: card.id, position: idx }))
+    window.electronAPI?.reorderPageCards(pageId, positions).catch(() => {
+      toast.error('Failed to save card order')
+      setCards(cards)
+    })
+  }
+
+  function onDragEnd() {
+    dragFromIdx.current = null
+    setDragOverIdx(null)
+  }
+
+  // ─── Edit dimensions ─────────────────────────────────────────────────────────
+
+  function openEditDims() {
+    if (!page) return
+    const currentLabel = `${page.cols}×${page.rows}`
+    const matchesPreset = DIMENSION_PRESETS.some(p => p.label === currentLabel)
+    setDimsPreset(matchesPreset ? currentLabel : 'Custom')
+    setDimsCustomCols(page.cols)
+    setDimsCustomRows(page.rows)
+    setEditDimsOpen(true)
+  }
+
+  const editDims = dimsPreset === 'Custom'
+    ? { cols: Math.max(1, dimsCustomCols), rows: Math.max(1, dimsCustomRows) }
+    : DIMENSION_PRESETS.find(p => p.label === dimsPreset) ?? { cols: 3, rows: 3 }
+
+  const overflowCount = Math.max(0, cards.length - editDims.cols * editDims.rows)
+
+  async function saveDimensions() {
+    if (!window.electronAPI || !page) return
+    setSavingDims(true)
+    try {
+      const newCols = editDims.cols
+      const newRows = editDims.rows
+      const capacity = newCols * newRows
+      const overflow = cards.slice(capacity)
+      const keep = cards.slice(0, capacity)
+
+      await window.electronAPI.updatePage(pageId, { cols: newCols, rows: newRows })
+
+      if (overflow.length > 0) {
+        let batch = overflow
+        while (batch.length > 0) {
+          const chunk = batch.slice(0, capacity)
+          batch = batch.slice(capacity)
+          const newPage = await window.electronAPI.createPage({
+            binderId,
+            name: `${page.name} (cont.)`,
+            cols: newCols,
+            rows: newRows,
+          })
+          await window.electronAPI.moveCardsToPage(chunk.map(c => c.id), newPage.id)
+        }
+        toast.success(`Dimensions updated. ${overflow.length} card${overflow.length !== 1 ? 's' : ''} moved to new page${overflowCount > capacity ? 's' : ''}.`)
+      } else {
+        toast.success('Dimensions updated')
+      }
+
+      setPage(prev => prev ? { ...prev, cols: newCols, rows: newRows } : null)
+      setCards(keep)
+      setEditDimsOpen(false)
+    } catch {
+      toast.error('Failed to update dimensions')
+    } finally {
+      setSavingDims(false)
+    }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
+  if (loading || !pageId) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+  }
   if (!page) return null
 
-  const pageLabel = page.name || `Page ${page.pageNumber}`
-  const imageUrl = window.electronAPI?.getImageUrl(page.imagePath || null)
+  const cols = page.cols ?? 3
+  const rows = page.rows ?? 3
+  const totalSlots = cols * rows
+
+  // Build slot array: cards fill from start, rest are null
+  const slots: (CardRow | null)[] = Array(totalSlots).fill(null)
+  cards.forEach((card, i) => {
+    if (i < totalSlots) slots[i] = card
+  })
 
   return (
-    <main className="min-h-screen p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href={`/binder?id=${binderId}`} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold">{pageLabel}</h1>
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <div className="border-b bg-background sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
+          <Link href={`/binder?id=${binderId}`} className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <h1 className="font-semibold flex-1 truncate">{page.name}</h1>
+          <button
+            onClick={openEditDims}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1 transition-colors"
+          >
+            <LayoutGrid className="h-3 w-3" />
+            {cols}×{rows}
+          </button>
+          <Button size="sm" onClick={() => setPanelOpen(true)}>
+            Add Cards
+            <ChevronRight className="h-3.5 w-3.5 ml-1" />
+          </Button>
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={pageLabel}
-            className="w-48 rounded-lg border object-cover"
-          />
+      {/* Main content */}
+      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-6">
+        {cards.length === 0 ? (
+          <div className="text-center py-24 text-muted-foreground">
+            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-20" />
+            <p className="text-sm mb-4">No cards on this page yet.</p>
+            <Button onClick={() => setPanelOpen(true)}>
+              <Search className="h-4 w-4 mr-2" />
+              Add Cards
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          >
+            {slots.map((card, slotIdx) => (
+              <div
+                key={slotIdx}
+                className={`relative aspect-[2.5/3.5] rounded-lg border-2 transition-colors ${
+                  dragOverIdx === slotIdx
+                    ? 'border-primary bg-primary/5'
+                    : card
+                    ? 'border-border bg-card'
+                    : 'border-dashed border-border/40 bg-muted/20'
+                }`}
+                onDragOver={e => onDragOver(e, slotIdx)}
+                onDragLeave={onDragLeave}
+                onDrop={e => onDrop(e, slotIdx)}
+              >
+                {card ? (
+                  <div
+                    draggable
+                    onDragStart={e => onDragStart(e, slotIdx)}
+                    onDragEnd={onDragEnd}
+                    className="w-full h-full cursor-grab active:cursor-grabbing group"
+                  >
+                    {card.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={card.imageUrl}
+                        alt={card.name}
+                        className="w-full h-full object-cover rounded-[5px] select-none pointer-events-none"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center p-2 rounded-[5px] bg-secondary">
+                        <span className="text-xs text-muted-foreground text-center leading-tight">{card.name}</span>
+                      </div>
+                    )}
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 rounded-[5px] bg-black/0 group-hover:bg-black/30 transition-colors flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100">
+                      <div className="flex flex-col items-center gap-0.5 text-center px-1">
+                        <span className="text-white text-[10px] font-medium leading-tight drop-shadow line-clamp-2">{card.name}</span>
+                        {card.setName && card.setName !== card.setId && (
+                          <span className="text-white/70 text-[9px] leading-tight drop-shadow">{card.setName}</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Delete button */}
+                    <button
+                      onClick={() => deleteCard(card.id)}
+                      className="absolute top-1 right-1 bg-background/80 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
         )}
-        <div className="flex flex-col gap-2">
-          <div className="bg-card border rounded-lg px-4 py-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Cards on page</p>
-            <p className="text-2xl font-bold">{page.cards.length}</p>
-          </div>
-          <div className="bg-card border rounded-lg px-4 py-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
-            <p className="text-sm font-medium capitalize">{page.status}</p>
-          </div>
-        </div>
       </div>
 
-      {page.cards.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-sm">No cards were identified on this page.</p>
+      {/* Slide-in card search panel */}
+      {panelOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/20"
+            onClick={() => setPanelOpen(false)}
+          />
+          {/* Panel */}
+          <div className="relative w-80 h-full bg-background border-l flex flex-col shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h2 className="font-semibold text-sm">Add Cards</h2>
+              <button onClick={() => setPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-3 py-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  className="pl-8 h-8 text-sm"
+                  placeholder="Search cards..."
+                  value={searchQuery}
+                  onChange={e => handleSearchChange(e.target.value)}
+                  autoFocus
+                />
+                {searching && (
+                  <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {searchResults.length === 0 && searchQuery.length < 2 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-xs">Type at least 2 characters to search</p>
+                </div>
+              )}
+              {searchResults.length === 0 && searchQuery.length >= 2 && !searching && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-xs">No results for &quot;{searchQuery}&quot;</p>
+                </div>
+              )}
+              {searchResults.map(card => {
+                const selected = selectedCards.has(card.tcgApiId)
+                return (
+                  <button
+                    key={card.tcgApiId}
+                    onClick={() => toggleCardSelection(card.tcgApiId)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/30 text-left ${
+                      selected ? 'bg-primary/5' : ''
+                    }`}
+                  >
+                    {card.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={card.imageUrl}
+                        alt={card.name}
+                        className="w-9 h-12 object-cover rounded flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-12 bg-secondary rounded flex-shrink-0 flex items-center justify-center">
+                        <span className="text-[8px] text-muted-foreground text-center px-0.5">{card.name}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{card.setName || card.setId}</p>
+                      {card.collectorNumber && (
+                        <p className="text-[10px] text-muted-foreground">#{card.collectorNumber}</p>
+                      )}
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                      selected ? 'bg-primary border-primary' : 'border-border'
+                    }`}>
+                      {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-3 py-3 border-t bg-background">
+              <Button
+                className="w-full"
+                disabled={selectedCards.size === 0 || adding}
+                onClick={addSelectedCards}
+              >
+                {adding ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Adding...</>
+                ) : selectedCards.size === 0 ? (
+                  'Select cards to add'
+                ) : (
+                  `Add ${selectedCards.size} Card${selectedCards.size !== 1 ? 's' : ''}`
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <BinderCardGrid cards={page.cards} binderId={binderId} onRefresh={load} />
       )}
-    </main>
+
+      {/* Edit dimensions dialog */}
+      <Dialog open={editDimsOpen} onOpenChange={open => !open && setEditDimsOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Grid Size</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Grid size</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {DIMENSION_PRESETS.map(preset => (
+                  <button
+                    key={preset.label}
+                    onClick={() => setDimsPreset(preset.label)}
+                    className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
+                      dimsPreset === preset.label
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setDimsPreset('Custom')}
+                  className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
+                    dimsPreset === 'Custom'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+              {dimsPreset === 'Custom' && (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Columns</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={dimsCustomCols}
+                      onChange={e => setDimsCustomCols(Number(e.target.value))}
+                    />
+                  </div>
+                  <span className="mt-5 text-muted-foreground">×</span>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Rows</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={dimsCustomRows}
+                      onChange={e => setDimsCustomRows(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {editDims.cols} × {editDims.rows} = {editDims.cols * editDims.rows} card slots
+              </p>
+            </div>
+
+            {overflowCount > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                {overflowCount} card{overflowCount !== 1 ? 's' : ''} won&apos;t fit in the new size and will be moved to a new page automatically.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDimsOpen(false)} disabled={savingDims}>Cancel</Button>
+            <Button onClick={saveDimensions} disabled={savingDims}>
+              {savingDims ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Saving...</> : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

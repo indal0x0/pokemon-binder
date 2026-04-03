@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updatePage: (pageId, data) => ipcRenderer.invoke('pages:update', pageId, data),
   deletePage: (pageId) => ipcRenderer.invoke('pages:delete', pageId),
   reorderPages: (binderId, orderedIds) => ipcRenderer.invoke('pages:reorder', binderId, orderedIds),
+  reorderPageCards: (pageId, positions) => ipcRenderer.invoke('pages:reorder-cards', pageId, positions),
+  moveCardsToPage: (cardIds, targetPageId) => ipcRenderer.invoke('pages:move-cards', cardIds, targetPageId),
 
   // Cards
   listCards: (binderId, pageId) => ipcRenderer.invoke('cards:list', binderId, pageId),
