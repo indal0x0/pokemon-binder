@@ -85,6 +85,7 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binders ADD COLUMN coverImagePath TEXT`,
     `ALTER TABLE binders ADD COLUMN coverPattern TEXT`,
     `ALTER TABLE binders ADD COLUMN coverPreset TEXT`,
+    `ALTER TABLE binder_cards ADD COLUMN year INTEGER`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -234,8 +235,8 @@ function createCard(data) {
   db.prepare(`
     INSERT INTO binder_cards
       (id, binderId, pageId, tcgApiId, name, setId, setName, collectorNumber, rarity, imageUrl,
-       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, year, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, data.binderId, data.pageId ?? null, data.tcgApiId, data.name,
     data.setId || 'unknown', data.setName || 'Unknown Set', data.collectorNumber || '',
@@ -244,20 +245,24 @@ function createCard(data) {
     data.priceUpdatedAt ?? null,
     data.quantity ?? 1, data.condition ?? null, data.tradeList ? 1 : 0,
     position,
+    data.year ?? null,
     ts, ts
   )
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
 }
 
-function updateCard(id, { quantity, condition, tradeList }) {
-  db.prepare(`
-    UPDATE binder_cards SET
-      quantity  = COALESCE(?, quantity),
-      condition = COALESCE(?, condition),
-      tradeList = COALESCE(?, tradeList),
-      updatedAt = ?
-    WHERE id = ?
-  `).run(quantity ?? null, condition ?? null, tradeList != null ? (tradeList ? 1 : 0) : null, now(), id)
+function updateCard(id, data) {
+  const { quantity, condition, tradeList, imageUrl } = data
+  const parts = [
+    'quantity  = COALESCE(?, quantity)',
+    'condition = COALESCE(?, condition)',
+    'tradeList = COALESCE(?, tradeList)',
+    'updatedAt = ?',
+  ]
+  const params = [quantity ?? null, condition ?? null, tradeList != null ? (tradeList ? 1 : 0) : null, now()]
+  if ('imageUrl' in data) { parts.push('imageUrl = ?'); params.push(imageUrl ?? null) }
+  params.push(id)
+  db.prepare(`UPDATE binder_cards SET ${parts.join(', ')} WHERE id = ?`).run(...params)
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
 }
 

@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('upload:image', binderId, file.name, arrayBuffer)
   },
 
+  // Upload a custom card image — saves locally and updates the card's imageUrl in DB
+  uploadCardImage: async (cardId, binderId, file) => {
+    const arrayBuffer = await file.arrayBuffer()
+    return ipcRenderer.invoke('cards:upload-card-image', cardId, binderId, file.name, arrayBuffer)
+  },
+
   // Binder cover image upload
   uploadCover: async (binderId, file) => {
     const arrayBuffer = await file.arrayBuffer()

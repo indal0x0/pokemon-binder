@@ -59,6 +59,7 @@ export default function BrowsePage() {
         setName: card.setName,
         collectorNumber: card.collectorNumber,
         rarity: card.rarity ?? undefined,
+        year: card.year ?? undefined,
         imageUrl: card.imageUrl ?? undefined,
         priceLow: card.priceLow ?? undefined,
         priceMid: card.priceMid ?? undefined,

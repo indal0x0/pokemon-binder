@@ -118,6 +118,91 @@
   --sidebar-ring: oklch(0.65 0.18 250);
 }
 
+/* ─── Theme: Obsidian (default — dark blue-grey) ─────────────────────────── */
+html[data-theme="obsidian"],
+html:not([data-theme]) {
+  --background: oklch(0.16 0.02 250);
+  --foreground: oklch(0.97 0.005 250);
+  --card: oklch(0.19 0.02 250);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.16 0.02 250);
+  --popover-foreground: oklch(0.97 0.005 250);
+  --primary: oklch(0.65 0.18 250);
+  --primary-foreground: oklch(0.16 0.02 250);
+  --secondary: oklch(0.23 0.02 250);
+  --secondary-foreground: oklch(0.97 0.005 250);
+  --muted: oklch(0.23 0.02 250);
+  --muted-foreground: oklch(0.60 0.01 250);
+  --accent: oklch(0.23 0.02 250);
+  --accent-foreground: oklch(0.97 0.005 250);
+  --border: oklch(0.28 0.02 250);
+  --input: oklch(0.28 0.02 250);
+  --ring: oklch(0.65 0.18 250);
+}
+
+/* ─── Theme: Arctic (cool teal/ice) ─────────────────────────────────────── */
+html[data-theme="arctic"] {
+  --background: oklch(0.13 0.02 195);
+  --foreground: oklch(0.96 0.005 195);
+  --card: oklch(0.17 0.02 195);
+  --card-foreground: oklch(0.96 0.005 195);
+  --popover: oklch(0.13 0.02 195);
+  --popover-foreground: oklch(0.96 0.005 195);
+  --primary: oklch(0.70 0.13 195);
+  --primary-foreground: oklch(0.13 0.02 195);
+  --secondary: oklch(0.21 0.015 195);
+  --secondary-foreground: oklch(0.96 0.005 195);
+  --muted: oklch(0.21 0.015 195);
+  --muted-foreground: oklch(0.58 0.01 195);
+  --accent: oklch(0.21 0.015 195);
+  --accent-foreground: oklch(0.96 0.005 195);
+  --border: oklch(0.27 0.015 195);
+  --input: oklch(0.27 0.015 195);
+  --ring: oklch(0.70 0.13 195);
+}
+
+/* ─── Theme: Ember (warm amber) ──────────────────────────────────────────── */
+html[data-theme="ember"] {
+  --background: oklch(0.14 0.025 40);
+  --foreground: oklch(0.97 0.005 40);
+  --card: oklch(0.18 0.025 40);
+  --card-foreground: oklch(0.97 0.005 40);
+  --popover: oklch(0.14 0.025 40);
+  --popover-foreground: oklch(0.97 0.005 40);
+  --primary: oklch(0.72 0.18 55);
+  --primary-foreground: oklch(0.14 0.025 40);
+  --secondary: oklch(0.22 0.02 40);
+  --secondary-foreground: oklch(0.97 0.005 40);
+  --muted: oklch(0.22 0.02 40);
+  --muted-foreground: oklch(0.60 0.01 40);
+  --accent: oklch(0.22 0.02 40);
+  --accent-foreground: oklch(0.97 0.005 40);
+  --border: oklch(0.28 0.02 40);
+  --input: oklch(0.28 0.02 40);
+  --ring: oklch(0.72 0.18 55);
+}
+
+/* ─── Theme: Slate (neutral charcoal) ───────────────────────────────────── */
+html[data-theme="slate"] {
+  --background: oklch(0.13 0.003 260);
+  --foreground: oklch(0.96 0.003 260);
+  --card: oklch(0.17 0.003 260);
+  --card-foreground: oklch(0.96 0.003 260);
+  --popover: oklch(0.13 0.003 260);
+  --popover-foreground: oklch(0.96 0.003 260);
+  --primary: oklch(0.75 0.003 260);
+  --primary-foreground: oklch(0.13 0.003 260);
+  --secondary: oklch(0.21 0.003 260);
+  --secondary-foreground: oklch(0.96 0.003 260);
+  --muted: oklch(0.21 0.003 260);
+  --muted-foreground: oklch(0.57 0.003 260);
+  --accent: oklch(0.21 0.003 260);
+  --accent-foreground: oklch(0.96 0.003 260);
+  --border: oklch(0.26 0.003 260);
+  --input: oklch(0.26 0.003 260);
+  --ring: oklch(0.75 0.003 260);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

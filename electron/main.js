@@ -297,6 +297,19 @@ ipcMain.handle('upload:image', (_, binderId, filename, arrayBuffer) => {
   return `uploads/${binderId}/${safeFilename}`
 })
 
+// ─── IPC: Card custom image upload ───────────────────────────────────────────
+
+ipcMain.handle('cards:upload-card-image', (_, cardId, binderId, filename, arrayBuffer) => {
+  const cardsDir = getUserDataPath('uploads', binderId, 'cards')
+  fs.mkdirSync(cardsDir, { recursive: true })
+  const ext = path.extname(filename) || '.jpg'
+  const destPath = path.join(cardsDir, `${cardId}${ext}`)
+  fs.writeFileSync(destPath, Buffer.from(arrayBuffer))
+  const relativePath = `uploads/${binderId}/cards/${cardId}${ext}`
+  const { updateCard } = require('./db')
+  return updateCard(cardId, { imageUrl: relativePath })
+})
+
 // ─── IPC: Scanning ────────────────────────────────────────────────────────────
 
 ipcMain.handle('scan:page', async (_, binderId, pageId, imagePath) => {

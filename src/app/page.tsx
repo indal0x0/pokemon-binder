@@ -8,6 +8,7 @@ import { BinderCover } from '@/components/BinderCover'
 import { formatCurrency } from '@/lib/utils'
 import { Plus, BookOpen, ChevronRight, Settings } from 'lucide-react'
 import type { BinderRow } from '@/types/electron'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 export default function HomePage() {
   const [binders, setBinders] = useState<BinderRow[]>([])
@@ -28,14 +29,15 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold tracking-tight">Pokemon Binder</h1>
           <p className="text-muted-foreground text-sm mt-1">Track and value your collection</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1">
+          <ThemeSwitcher />
           <Link href="/settings">
             <Button variant="ghost" size="sm">
               <Settings className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/binders/new">
-            <Button size="sm">
+            <Button size="sm" className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               New Binder
             </Button>
@@ -54,7 +56,7 @@ export default function HomePage() {
         <div className="grid gap-3">
           {binders.map(binder => (
             <Link key={binder.id} href={`/binder?id=${binder.id}`}>
-              <div className="flex items-center gap-4 rounded-lg border bg-card hover:bg-secondary/50 transition-colors cursor-pointer px-4 py-3">
+              <div className="flex items-center gap-4 rounded-xl border border-border/50 bg-card hover:bg-secondary/40 hover:border-border hover:shadow-md hover:shadow-black/20 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer px-4 py-3">
                 <BinderCover binder={binder} className="w-10 h-14 rounded flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{binder.name}</p>

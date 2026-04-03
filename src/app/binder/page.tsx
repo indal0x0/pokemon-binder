@@ -12,6 +12,7 @@ import { BinderActions } from '@/components/BinderActions'
 import { BinderCover } from '@/components/BinderCover'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 import { PagesGallery } from '@/components/PagesGallery'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderRow, PageRow, CardRow } from '@/types/electron'
 
@@ -96,20 +97,21 @@ export default function BinderPage() {
           <h1 className="text-xl font-bold">{binder.name}</h1>
           {binder.description && <p className="text-sm text-muted-foreground">{binder.description}</p>}
         </div>
+        <ThemeSwitcher />
         <BinderActions binderId={binder.id} onRefresh={load} />
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <div className="bg-card border rounded-lg px-4 py-3 flex-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Value</p>
+      <div className="flex gap-3 mb-6">
+        <div className="bg-card border border-border/50 rounded-xl px-5 py-4 flex-1 shadow-md shadow-black/20">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-1">Total Value</p>
           <p className="text-2xl font-bold">{formatCurrency(totalValue)}</p>
         </div>
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Cards</p>
+        <div className="bg-card border border-border/50 rounded-xl px-5 py-4 shadow-md shadow-black/20">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-1">Cards</p>
           <p className="text-2xl font-bold">{cardCount}</p>
         </div>
-        <div className="bg-card border rounded-lg px-4 py-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Pages</p>
+        <div className="bg-card border border-border/50 rounded-xl px-5 py-4 shadow-md shadow-black/20">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-1">Pages</p>
           <p className="text-2xl font-bold">{binder.pages.length}</p>
         </div>
       </div>
@@ -118,7 +120,7 @@ export default function BinderPage() {
 
       {binder.cards.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">All Cards</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-3 mt-6">All Cards</h2>
           <BinderCardGrid cards={binder.cards} binderId={binder.id} onRefresh={load} />
         </>
       )}

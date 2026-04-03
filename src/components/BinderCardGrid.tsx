@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, ArrowLeftRight } from 'lucide-react'
+import { Trash2, ArrowLeftRight, EyeOff } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import type { CardRow } from '@/types/electron'
+import { CardDetailModal } from './CardDetailModal'
 
 export function BinderCardGrid({
   cards,
@@ -17,6 +18,8 @@ export function BinderCardGrid({
 }) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [hideUnpriced, setHideUnpriced] = useState(false)
+  const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
 
   async function deleteCard(cardId: string) {
     if (!window.electronAPI) return
@@ -40,61 +43,123 @@ export function BinderCardGrid({
     }
   }
 
+  function handleCardUpdated(updated: CardRow) {
+    setSelectedCard(updated)
+    onRefresh()
+  }
+
+  const visible = hideUnpriced
+    ? cards.filter(c => c.priceMarket && c.priceMarket > 0)
+    : cards
+
+  const hiddenCount = cards.length - visible.length
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-      {cards.map(card => (
-        <div key={card.id} className="group relative bg-card border rounded-lg overflow-hidden hover:border-primary/50 transition-colors">
-          {card.tradeList ? (
-            <div className="absolute top-1.5 left-1.5 z-10">
-              <Badge className="text-[10px] px-1 py-0 bg-amber-500 hover:bg-amber-500 text-white border-0">
-                Trade
-              </Badge>
-            </div>
-          ) : null}
-          {card.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover" />
-          ) : (
-            <div className="w-full aspect-[2.5/3.5] bg-secondary flex items-center justify-center">
-              <span className="text-xs text-muted-foreground text-center px-2">{card.name}</span>
-            </div>
+    <>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-muted-foreground">
+          {visible.length} card{visible.length !== 1 ? 's' : ''}
+          {hideUnpriced && hiddenCount > 0 && (
+            <span className="ml-1 text-muted-foreground/60">({hiddenCount} hidden)</span>
           )}
-          <div className="p-2">
-            <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{card.setName}</p>
-            {card.collectorNumber && (
-              <p className="text-xs text-muted-foreground">#{card.collectorNumber}</p>
-            )}
-            <div className="flex items-center justify-between mt-1.5">
-              <p className="text-sm font-semibold text-primary">
-                {card.priceMarket ? formatCurrency(card.priceMarket) : '—'}
-              </p>
-              <div className="flex gap-1">
-                {card.condition && <Badge variant="outline" className="text-xs px-1 py-0">{card.condition}</Badge>}
-                {card.quantity > 1 && <Badge variant="secondary" className="text-xs px-1 py-0">x{card.quantity}</Badge>}
+        </p>
+        <button
+          onClick={() => setHideUnpriced(v => !v)}
+          className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors ${
+            hideUnpriced
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'border-border/50 text-muted-foreground hover:text-foreground hover:border-border'
+          }`}
+        >
+          <EyeOff className="h-3 w-3" />
+          Hide unpriced
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {visible.map(card => (
+          <div
+            key={card.id}
+            className="group relative bg-card border border-border/50 rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-black/30 transition-all duration-200 shadow-md shadow-black/20"
+          >
+            {card.tradeList ? (
+              <div className="absolute top-2 left-2 z-10">
+                <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500 text-white border-0 shadow-sm">
+                  Trade
+                </Badge>
+              </div>
+            ) : null}
+
+            {/* Card image — clickable to open detail */}
+            <div
+              className="cursor-pointer"
+              onClick={() => setSelectedCard(card)}
+            >
+              {card.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={
+                    card.imageUrl.startsWith('uploads/')
+                      ? window.electronAPI?.getImageUrl(card.imageUrl) ?? card.imageUrl
+                      : card.imageUrl
+                  }
+                  alt={card.name}
+                  className="w-full aspect-[2.5/3.5] object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full aspect-[2.5/3.5] bg-secondary/60 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/80 transition-colors"
+                  title="Click to add image"
+                >
+                  <span className="text-xs text-muted-foreground text-center px-2 leading-tight">{card.name}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-2.5">
+              <p className="text-xs font-semibold leading-tight truncate">{card.name}</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{card.setName}</p>
+              {card.collectorNumber && (
+                <p className="text-[11px] text-muted-foreground/60">#{card.collectorNumber}</p>
+              )}
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-sm font-bold text-primary">
+                  {card.priceMarket ? formatCurrency(card.priceMarket) : <span className="text-muted-foreground/50 text-xs font-normal">No price</span>}
+                </p>
+                <div className="flex gap-1">
+                  {card.condition && <Badge variant="outline" className="text-[10px] px-1 py-0">{card.condition}</Badge>}
+                  {card.quantity > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0">×{card.quantity}</Badge>}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => toggleTradeList(card)}
-              disabled={togglingId === card.id}
-              title={card.tradeList ? 'Remove from trade list' : 'Add to trade list'}
-              className="bg-background/80 rounded p-1 hover:bg-amber-500 hover:text-white transition-colors"
-            >
-              <ArrowLeftRight className="h-3 w-3" />
-            </button>
-            <button
-              onClick={() => deleteCard(card.id)}
-              disabled={deletingId === card.id}
-              className="bg-background/80 rounded p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
+            <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => toggleTradeList(card)}
+                disabled={togglingId === card.id}
+                title={card.tradeList ? 'Remove from trade list' : 'Add to trade list'}
+                className="bg-background/90 backdrop-blur-sm rounded-md p-1.5 hover:bg-amber-500 hover:text-white transition-colors shadow-sm"
+              >
+                <ArrowLeftRight className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => deleteCard(card.id)}
+                disabled={deletingId === card.id}
+                className="bg-background/90 backdrop-blur-sm rounded-md p-1.5 hover:bg-destructive hover:text-destructive-foreground transition-colors shadow-sm"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      <CardDetailModal
+        card={selectedCard}
+        onClose={() => setSelectedCard(null)}
+        onCardUpdated={handleCardUpdated}
+      />
+    </>
   )
 }

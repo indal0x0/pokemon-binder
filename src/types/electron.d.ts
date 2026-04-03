@@ -46,6 +46,7 @@ export interface CardRow {
   setName: string
   collectorNumber: string
   rarity: string | null
+  year: number | null
   imageUrl: string | null
   priceLow: number | null
   priceMid: number | null
@@ -106,7 +107,8 @@ interface ElectronAPI {
 
   listCards(binderId: string, pageId?: string): Promise<CardRow[]>
   createCard(data: Partial<CardRow>): Promise<CardRow>
-  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean }): Promise<CardRow>
+  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null }): Promise<CardRow>
+  uploadCardImage(cardId: string, binderId: string, file: File): Promise<CardRow>
   deleteCard(id: string): Promise<boolean>
   refreshPrices(binderId: string): Promise<{ updated: number }>
 

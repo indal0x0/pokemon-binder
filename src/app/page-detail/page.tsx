@@ -166,6 +166,7 @@ export default function PageDetailPage() {
           setName: card.setName,
           collectorNumber: card.collectorNumber,
           rarity: card.rarity ?? undefined,
+          year: card.year ?? undefined,
           imageUrl: card.imageUrl ?? undefined,
           quantity: 1,
           tradeList: 0,
