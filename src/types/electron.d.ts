@@ -7,6 +7,8 @@ export interface BinderRow {
   id: string
   name: string
   description: string | null
+  coverColor: string | null
+  coverImagePath: string | null
   createdAt: string
   updatedAt: string
   totalValue?: number
@@ -63,6 +65,7 @@ export interface TcgCardResult {
   collectorNumber: string
   rarity: string | null
   imageUrl: string | null
+  year: number | null
   priceLow: number | null
   priceMid: number | null
   priceMarket: number | null
@@ -79,8 +82,9 @@ interface ElectronAPI {
 
   listBinders(): Promise<BinderRow[]>
   getBinder(id: string): Promise<(BinderRow & { pages: PageRow[]; cards: CardRow[] }) | null>
-  createBinder(data: { name: string; description?: string }): Promise<BinderRow>
-  updateBinder(id: string, data: { name?: string; description?: string }): Promise<BinderRow>
+  createBinder(data: { name: string; description?: string; coverColor?: string | null; coverImagePath?: string | null }): Promise<BinderRow>
+  updateBinder(id: string, data: { name?: string; description?: string; coverColor?: string | null; coverImagePath?: string | null }): Promise<BinderRow>
+  uploadCover(binderId: string, file: File): Promise<string>
   deleteBinder(id: string): Promise<boolean>
 
   listPages(binderId: string): Promise<PageRow[]>

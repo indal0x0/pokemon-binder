@@ -289,9 +289,9 @@ export default function PageDetailPage() {
   })
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b bg-background sticky top-0 z-10">
+      <div className="border-b bg-background z-10 flex-shrink-0">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
           <Link href={`/binder?id=${binderId}`} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -311,11 +311,11 @@ export default function PageDetailPage() {
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-6">
+      {/* Main content — fills remaining height, no scroll */}
+      <div className="flex-1 overflow-hidden max-w-6xl mx-auto w-full px-6 py-4 flex flex-col">
         {cards.length === 0 ? (
-          <div className="text-center py-24 text-muted-foreground">
-            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-20" />
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+            <LayoutGrid className="h-12 w-12 mb-4 opacity-20" />
             <p className="text-sm mb-4">No cards on this page yet.</p>
             <Button onClick={() => setPanelOpen(true)}>
               <Search className="h-4 w-4 mr-2" />
@@ -324,13 +324,16 @@ export default function PageDetailPage() {
           </div>
         ) : (
           <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+            className="flex-1 grid gap-1.5 overflow-hidden"
+            style={{
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${rows}, 1fr)`,
+            }}
           >
             {slots.map((card, slotIdx) => (
               <div
                 key={slotIdx}
-                className={`relative aspect-[2.5/3.5] rounded-lg border-2 transition-colors ${
+                className={`relative rounded-lg border-2 overflow-hidden transition-colors ${
                   dragOverIdx === slotIdx
                     ? 'border-primary bg-primary/5'
                     : card
@@ -353,20 +356,23 @@ export default function PageDetailPage() {
                       <img
                         src={card.imageUrl}
                         alt={card.name}
-                        className="w-full h-full object-cover rounded-[5px] select-none pointer-events-none"
+                        className="w-full h-full object-contain select-none pointer-events-none"
                         draggable={false}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center p-2 rounded-[5px] bg-secondary">
+                      <div className="w-full h-full flex items-center justify-center p-2 bg-secondary">
                         <span className="text-xs text-muted-foreground text-center leading-tight">{card.name}</span>
                       </div>
                     )}
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 rounded-[5px] bg-black/0 group-hover:bg-black/30 transition-colors flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100">
-                      <div className="flex flex-col items-center gap-0.5 text-center px-1">
-                        <span className="text-white text-[10px] font-medium leading-tight drop-shadow line-clamp-2">{card.name}</span>
-                        {card.setName && card.setName !== card.setId && (
-                          <span className="text-white/70 text-[9px] leading-tight drop-shadow">{card.setName}</span>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-end opacity-0 group-hover:opacity-100">
+                      <div className="w-full px-1.5 pb-1.5 pt-4 bg-gradient-to-t from-black/80 to-transparent">
+                        <p className="text-white text-[10px] font-semibold leading-tight drop-shadow line-clamp-2">{card.name}</p>
+                        {card.collectorNumber && (
+                          <p className="text-white/70 text-[9px] leading-tight drop-shadow">#{card.collectorNumber}</p>
+                        )}
+                        {card.setName && (
+                          <p className="text-white/60 text-[9px] leading-tight drop-shadow truncate">{card.setName}</p>
                         )}
                       </div>
                     </div>
@@ -453,10 +459,12 @@ export default function PageDetailPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{card.setName || card.setId}</p>
                       {card.collectorNumber && (
                         <p className="text-[10px] text-muted-foreground">#{card.collectorNumber}</p>
                       )}
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {card.setName || card.setId}{card.year ? ` (${card.year})` : ''}
+                      </p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                       selected ? 'bg-primary border-primary' : 'border-border'

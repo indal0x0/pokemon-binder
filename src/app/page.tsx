@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BinderCover } from '@/components/BinderCover'
 import { formatCurrency } from '@/lib/utils'
 import { Plus, BookOpen, ChevronRight, Settings } from 'lucide-react'
 import type { BinderRow } from '@/types/electron'
@@ -54,27 +54,26 @@ export default function HomePage() {
         <div className="grid gap-3">
           {binders.map(binder => (
             <Link key={binder.id} href={`/binder?id=${binder.id}`}>
-              <Card className="hover:bg-secondary/50 transition-colors cursor-pointer">
-                <CardContent className="flex items-center justify-between py-4 px-5">
-                  <div>
-                    <p className="font-medium">{binder.name}</p>
-                    {binder.description && (
-                      <p className="text-muted-foreground text-xs mt-0.5">{binder.description}</p>
-                    )}
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="secondary" className="text-xs">{binder.cardCount ?? 0} cards</Badge>
-                      <Badge variant="secondary" className="text-xs">{binder.pageCount ?? 0} pages</Badge>
-                    </div>
+              <div className="flex items-center gap-4 rounded-lg border bg-card hover:bg-secondary/50 transition-colors cursor-pointer px-4 py-3">
+                <BinderCover binder={binder} className="w-10 h-14 rounded flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{binder.name}</p>
+                  {binder.description && (
+                    <p className="text-muted-foreground text-xs mt-0.5 truncate">{binder.description}</p>
+                  )}
+                  <div className="flex gap-2 mt-1.5">
+                    <Badge variant="secondary" className="text-xs">{binder.cardCount ?? 0} cards</Badge>
+                    <Badge variant="secondary" className="text-xs">{binder.pageCount ?? 0} pages</Badge>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-lg font-semibold">{formatCurrency(binder.totalValue ?? 0)}</p>
-                      <p className="text-xs text-muted-foreground">market value</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-lg font-semibold">{formatCurrency(binder.totalValue ?? 0)}</p>
+                    <p className="text-xs text-muted-foreground">market value</p>
                   </div>
-                </CardContent>
-              </Card>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
             </Link>
           ))}
         </div>

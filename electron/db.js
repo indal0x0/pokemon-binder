@@ -24,11 +24,13 @@ function initDb(Database, dbPath) {
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS binders (
-      id          TEXT PRIMARY KEY,
-      name        TEXT NOT NULL,
-      description TEXT,
-      createdAt   TEXT NOT NULL DEFAULT (datetime('now')),
-      updatedAt   TEXT NOT NULL DEFAULT (datetime('now'))
+      id             TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      description    TEXT,
+      coverColor     TEXT,
+      coverImagePath TEXT,
+      createdAt      TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt      TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS pages (
@@ -79,6 +81,8 @@ function initDb(Database, dbPath) {
     `ALTER TABLE pages ADD COLUMN rows INTEGER NOT NULL DEFAULT 3`,
     `ALTER TABLE binder_cards ADD COLUMN tradeList INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE binder_cards ADD COLUMN position INTEGER`,
+    `ALTER TABLE binders ADD COLUMN coverColor TEXT`,
+    `ALTER TABLE binders ADD COLUMN coverImagePath TEXT`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -110,15 +114,28 @@ function getBinderById(id) {
   return { ...binder, pages, cards, totalValue, cardCount }
 }
 
-function createBinder({ name, description }) {
+function createBinder({ name, description, coverColor, coverImagePath }) {
   const id = uid()
   const ts = now()
-  db.prepare('INSERT INTO binders (id, name, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)').run(id, name, description || null, ts, ts)
+  db.prepare('INSERT INTO binders (id, name, description, coverColor, coverImagePath, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, description || null, coverColor || null, coverImagePath || null, ts, ts)
   return db.prepare('SELECT * FROM binders WHERE id = ?').get(id)
 }
 
-function updateBinder(id, { name, description }) {
-  db.prepare('UPDATE binders SET name = COALESCE(?, name), description = COALESCE(?, description), updatedAt = ? WHERE id = ?').run(name ?? null, description ?? null, now(), id)
+function updateBinder(id, updates) {
+  const { name, description } = updates
+  // Build SET clause — cover fields can be explicitly nulled to clear them
+  const parts = [
+    'name = COALESCE(?, name)',
+    'description = COALESCE(?, description)',
+    'updatedAt = ?',
+  ]
+  const params = [name ?? null, description ?? null, now()]
+
+  if ('coverColor' in updates) { parts.push('coverColor = ?'); params.push(updates.coverColor ?? null) }
+  if ('coverImagePath' in updates) { parts.push('coverImagePath = ?'); params.push(updates.coverImagePath ?? null) }
+
+  params.push(id)
+  db.prepare(`UPDATE binders SET ${parts.join(', ')} WHERE id = ?`).run(...params)
   return db.prepare('SELECT * FROM binders WHERE id = ?').get(id)
 }
 

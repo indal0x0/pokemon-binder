@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('upload:image', binderId, file.name, arrayBuffer)
   },
 
+  // Binder cover image upload
+  uploadCover: async (binderId, file) => {
+    const arrayBuffer = await file.arrayBuffer()
+    return ipcRenderer.invoke('binders:upload-cover', binderId, file.name, arrayBuffer)
+  },
+
   // Card scanning (Gemini + TCG match)
   scanPage: (binderId, pageId, imagePath) =>
     ipcRenderer.invoke('scan:page', binderId, pageId, imagePath),

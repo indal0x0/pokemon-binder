@@ -90,6 +90,7 @@ function createWindow() {
 function registerAppProtocol() {
   const outDir = path.join(app.getAppPath(), 'out')
   const uploadsDir = getUserDataPath('uploads')
+  const coversDir = getUserDataPath('covers')
 
   protocol.handle('app', (request) => {
     let urlPath = new URL(request.url).pathname
@@ -99,6 +100,12 @@ function registerAppProtocol() {
     // User-uploaded images: app://./uploads/binderId/filename
     if (urlPath.startsWith('/uploads/')) {
       const filePath = path.join(uploadsDir, urlPath.slice('/uploads/'.length))
+      return net.fetch(`file:///${filePath.replace(/\\/g, '/')}`)
+    }
+
+    // Binder cover images: app://./covers/binderId/cover.ext
+    if (urlPath.startsWith('/covers/')) {
+      const filePath = path.join(coversDir, urlPath.slice('/covers/'.length))
       return net.fetch(`file:///${filePath.replace(/\\/g, '/')}`)
     }
 
@@ -129,6 +136,17 @@ ipcMain.handle('settings:set', (_, newSettings) => {
 })
 
 ipcMain.handle('app:userData', () => app.getPath('userData'))
+
+// ─── IPC: Binder covers ───────────────────────────────────────────────────────
+
+ipcMain.handle('binders:upload-cover', (_, binderId, filename, arrayBuffer) => {
+  const coversDir = getUserDataPath('covers', binderId)
+  fs.mkdirSync(coversDir, { recursive: true })
+  const ext = path.extname(filename) || '.jpg'
+  const destPath = path.join(coversDir, `cover${ext}`)
+  fs.writeFileSync(destPath, Buffer.from(arrayBuffer))
+  return `covers/${binderId}/cover${ext}`
+})
 
 // ─── IPC: Binders ─────────────────────────────────────────────────────────────
 
@@ -221,9 +239,21 @@ ipcMain.handle('cards:list', (_, binderId, pageId) => {
   return getCards(binderId, pageId || undefined)
 })
 
-ipcMain.handle('cards:create', (_, data) => {
-  const { createCard } = require('./db')
-  return createCard(data)
+ipcMain.handle('cards:create', async (_, data) => {
+  const { createCard, updateCardPrices } = require('./db')
+  const { fetchCardPrices } = require('./tcg')
+  const card = createCard(data)
+  // Fetch prices immediately if we have a TCG ID
+  if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-')) {
+    try {
+      const prices = await fetchCardPrices(card.tcgApiId)
+      if (prices) {
+        updateCardPrices(card.id, prices)
+        return { ...card, ...prices }
+      }
+    } catch { /* price fetch failed, return card without prices */ }
+  }
+  return card
 })
 
 ipcMain.handle('cards:update', (_, id, data) => {
@@ -240,14 +270,12 @@ ipcMain.handle('cards:delete', (_, id) => {
 ipcMain.handle('cards:refresh-prices', async (_, binderId) => {
   const { getCardsForRefresh, updateCardPrices } = require('./db')
   const { refreshCardPrices } = require('./tcg')
-  const settings = getSettings()
-  const tcgApiKey = settings.pokemonTcgApiKey || ''
 
   const cards = getCardsForRefresh(binderId)
   let updated = 0
   for (const card of cards) {
     try {
-      const prices = await refreshCardPrices(card.tcgApiId, card.condition, tcgApiKey)
+      const prices = await refreshCardPrices(card.tcgApiId)
       if (prices) {
         updateCardPrices(card.id, prices)
         updated++
