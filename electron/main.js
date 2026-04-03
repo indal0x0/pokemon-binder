@@ -358,10 +358,9 @@ ipcMain.handle('scan:page', async (_, binderId, pageId, imagePath) => {
 
 // ─── IPC: TCG card search ─────────────────────────────────────────────────────
 
-ipcMain.handle('tcg:search', async (_, query) => {
+ipcMain.handle('tcg:search', async (_, query, page = 1) => {
   const { searchCards } = require('./tcg')
-  const settings = getSettings()
-  return searchCards(query, settings.pokemonTcgApiKey || '')
+  return searchCards(query, page)
 })
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────

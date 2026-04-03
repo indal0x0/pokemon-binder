@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <defs>
+    <linearGradient id="waterbg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0a1f3d"/>
+      <stop offset="100%" stop-color="#0d3b6e"/>
+    </linearGradient>
+    <radialGradient id="watershine" cx="30%" cy="20%" r="50%">
+      <stop offset="0%" stop-color="rgba(100,200,255,0.15)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="280" fill="url(#waterbg)"/>
+  <rect width="200" height="280" fill="url(#watershine)"/>
+  <!-- Wave layers -->
+  <path d="M 0 200 Q 25 185 50 200 Q 75 215 100 200 Q 125 185 150 200 Q 175 215 200 200 L 200 280 L 0 280 Z" fill="#1a6fa8" opacity="0.6"/>
+  <path d="M 0 215 Q 33 198 66 215 Q 99 232 132 215 Q 165 198 200 215 L 200 280 L 0 280 Z" fill="#2196f3" opacity="0.5"/>
+  <path d="M 0 230 Q 40 215 80 230 Q 120 245 160 230 Q 180 222 200 230 L 200 280 L 0 280 Z" fill="#42a5f5" opacity="0.4"/>
+  <!-- Water droplet main -->
+  <path d="M 100 60 Q 130 100 130 125 A 30 30 0 0 1 70 125 Q 70 100 100 60 Z" fill="#29b6f6"/>
+  <path d="M 100 60 Q 130 100 130 125 A 30 30 0 0 1 70 125 Q 70 100 100 60 Z" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+  <!-- Droplet highlight -->
+  <ellipse cx="88" cy="95" rx="8" ry="12" fill="rgba(255,255,255,0.25)" transform="rotate(-15 88 95)"/>
+  <!-- Bubble particles -->
+  <circle cx="55" cy="170" r="8" fill="none" stroke="rgba(100,200,255,0.4)" stroke-width="1.5"/>
+  <circle cx="145" cy="180" r="5" fill="none" stroke="rgba(100,200,255,0.35)" stroke-width="1.5"/>
+  <circle cx="40" cy="220" r="4" fill="none" stroke="rgba(100,200,255,0.3)" stroke-width="1"/>
+  <circle cx="165" cy="210" r="6" fill="none" stroke="rgba(100,200,255,0.35)" stroke-width="1.5"/>
+  <circle cx="75" cy="245" r="3" fill="none" stroke="rgba(100,200,255,0.25)" stroke-width="1"/>
+  <!-- Shimmer dots -->
+  <circle cx="30" cy="50" r="1.5" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="170" cy="40" r="1" fill="rgba(255,255,255,0.4)"/>
+  <circle cx="185" cy="80" r="1.5" fill="rgba(255,255,255,0.3)"/>
+  <text x="100" y="268" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="rgba(100,200,255,0.8)" text-anchor="middle" letter-spacing="4">WATER</text>
+</svg>

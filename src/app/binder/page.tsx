@@ -1,34 +1,29 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { ArrowLeft, ImageIcon, Palette, Pencil } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
 import { BinderCover } from '@/components/BinderCover'
+import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 import { PagesGallery } from '@/components/PagesGallery'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderRow, PageRow, CardRow } from '@/types/electron'
 
 type FullBinder = BinderRow & { pages: PageRow[]; cards: CardRow[] }
-type CoverMode = 'color' | 'image'
 
 export default function BinderPage() {
   const router = useRouter()
   const [binder, setBinder] = useState<FullBinder | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Edit cover dialog
   const [coverOpen, setCoverOpen] = useState(false)
-  const [coverMode, setCoverMode] = useState<CoverMode>('color')
-  const [coverColor, setCoverColor] = useState('#3b82f6')
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null)
+  const [cover, setCover] = useState<CoverState>(defaultCoverState())
   const [coverSaving, setCoverSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const binderId = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('id') ?? ''
@@ -48,35 +43,27 @@ export default function BinderPage() {
 
   function openEditCover() {
     if (!binder) return
-    if (binder.coverImagePath) {
-      setCoverMode('image')
-      setCoverImagePreview(window.electronAPI?.getImageUrl(binder.coverImagePath) ?? null)
-      setCoverImageFile(null)
+    if (binder.coverPreset) {
+      setCover({ mode: 'preset', preset: binder.coverPreset, color: '#3b82f6', pattern: 'none', imageFile: null, imagePreview: null })
+    } else if (binder.coverImagePath) {
+      setCover({ mode: 'image', preset: null, color: '#3b82f6', pattern: 'none', imageFile: null, imagePreview: window.electronAPI?.getImageUrl(binder.coverImagePath) ?? null })
     } else {
-      setCoverMode('color')
-      setCoverColor(binder.coverColor || '#3b82f6')
-      setCoverImagePreview(null)
-      setCoverImageFile(null)
+      setCover({ mode: 'color', preset: null, color: binder.coverColor || '#3b82f6', pattern: binder.coverPattern || 'none', imageFile: null, imagePreview: null })
     }
     setCoverOpen(true)
-  }
-
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setCoverImageFile(file)
-    setCoverImagePreview(URL.createObjectURL(file))
   }
 
   async function saveCover() {
     if (!binder || !window.electronAPI) return
     setCoverSaving(true)
     try {
-      if (coverMode === 'color') {
-        await window.electronAPI.updateBinder(binder.id, { coverColor, coverImagePath: null })
-      } else if (coverImageFile) {
-        const path = await window.electronAPI.uploadCover(binder.id, coverImageFile)
-        await window.electronAPI.updateBinder(binder.id, { coverImagePath: path, coverColor: null })
+      if (cover.mode === 'preset') {
+        await window.electronAPI.updateBinder(binder.id, { coverPreset: cover.preset, coverColor: null, coverImagePath: null, coverPattern: null })
+      } else if (cover.mode === 'color') {
+        await window.electronAPI.updateBinder(binder.id, { coverColor: cover.color, coverPattern: cover.pattern, coverPreset: null, coverImagePath: null })
+      } else if (cover.mode === 'image' && cover.imageFile) {
+        const path = await window.electronAPI.uploadCover(binder.id, cover.imageFile)
+        await window.electronAPI.updateBinder(binder.id, { coverImagePath: path, coverPreset: null, coverColor: null, coverPattern: null })
       }
       await load()
       setCoverOpen(false)
@@ -91,10 +78,7 @@ export default function BinderPage() {
   const totalValue = binder.cards.reduce((sum, c) => sum + (c.priceMarket || 0) * c.quantity, 0)
   const cardCount = binder.cards.reduce((sum, c) => sum + c.quantity, 0)
 
-  const editPreviewBinder = {
-    coverColor: coverMode === 'color' ? coverColor : null,
-    coverImagePath: coverMode === 'image' && !coverImageFile ? (binder.coverImagePath ?? null) : null,
-  }
+  const saveDisabled = coverSaving || (cover.mode === 'image' && !cover.imageFile && !binder.coverImagePath)
 
   return (
     <main className="min-h-screen p-6 max-w-5xl mx-auto">
@@ -102,15 +86,12 @@ export default function BinderPage() {
         <Link href="/" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-
-        {/* Cover thumbnail */}
         <div className="relative group flex-shrink-0 cursor-pointer" onClick={openEditCover}>
           <BinderCover binder={binder} className="w-10 h-14 rounded" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
             <Pencil className="h-3.5 w-3.5 text-white" />
           </div>
         </div>
-
         <div className="flex-1">
           <h1 className="text-xl font-bold">{binder.name}</h1>
           {binder.description && <p className="text-sm text-muted-foreground">{binder.description}</p>}
@@ -142,76 +123,18 @@ export default function BinderPage() {
         </>
       )}
 
-      {/* Edit Cover Dialog */}
       <Dialog open={coverOpen} onOpenChange={setCoverOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Cover</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCoverMode('color')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border transition-colors ${coverMode === 'color' ? 'bg-primary text-primary-foreground border-primary' : 'border-input hover:bg-secondary'}`}
-              >
-                <Palette className="h-3.5 w-3.5" /> Color
-              </button>
-              <button
-                type="button"
-                onClick={() => setCoverMode('image')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border transition-colors ${coverMode === 'image' ? 'bg-primary text-primary-foreground border-primary' : 'border-input hover:bg-secondary'}`}
-              >
-                <ImageIcon className="h-3.5 w-3.5" /> Image
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Preview */}
-              {coverMode === 'image' && coverImagePreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverImagePreview} alt="Cover preview" className="w-14 h-20 rounded object-cover flex-shrink-0 border" />
-              ) : (
-                <BinderCover binder={editPreviewBinder} className="w-14 h-20 rounded flex-shrink-0 border" />
-              )}
-
-              {coverMode === 'color' ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={coverColor}
-                    onChange={e => setCoverColor(e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 p-0 bg-transparent"
-                  />
-                  <span className="text-sm text-muted-foreground font-mono">{coverColor}</span>
-                </div>
-              ) : (
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                    {coverImageFile ? 'Change Image' : 'Choose Image'}
-                  </Button>
-                  {coverImageFile && (
-                    <p className="text-xs text-muted-foreground mt-1 truncate max-w-[180px]">{coverImageFile.name}</p>
-                  )}
-                </div>
-              )}
-            </div>
+          <div className="py-2">
+            <Label className="mb-2 block">Cover</Label>
+            <CoverPicker state={cover} onChange={next => setCover(prev => ({ ...prev, ...next }))} />
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setCoverOpen(false)}>Cancel</Button>
-            <Button
-              onClick={saveCover}
-              disabled={coverSaving || (coverMode === 'image' && !coverImageFile && !binder.coverImagePath)}
-            >
+            <Button onClick={saveCover} disabled={saveDisabled}>
               {coverSaving ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>

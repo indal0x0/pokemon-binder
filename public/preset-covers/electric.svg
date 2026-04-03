@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <defs>
+    <linearGradient id="elbg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1500"/>
+      <stop offset="100%" stop-color="#2d2400"/>
+    </linearGradient>
+    <radialGradient id="elglow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="rgba(255,230,0,0.2)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <filter id="lightning-glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="200" height="280" fill="url(#elbg)"/>
+  <rect width="200" height="280" fill="url(#elglow)"/>
+  <!-- Background lightning bolts (dim) -->
+  <path d="M 30 40 L 20 90 L 35 90 L 22 140" stroke="rgba(255,220,0,0.15)" stroke-width="2" fill="none"/>
+  <path d="M 170 50 L 162 95 L 175 95 L 165 145" stroke="rgba(255,220,0,0.15)" stroke-width="2" fill="none"/>
+  <!-- Main large lightning bolt -->
+  <path d="M 120 30 L 85 130 L 112 130 L 80 250 L 115 145 L 88 145 Z" fill="#ffd700" filter="url(#lightning-glow)"/>
+  <!-- Inner bright lightning -->
+  <path d="M 115 40 L 88 125 L 108 125 L 84 230 L 110 148 L 93 148 Z" fill="#fff176"/>
+  <!-- Electric sparks -->
+  <path d="M 50 80 L 62 80" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 58 72 L 54 88" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 148 95 L 160 95" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 156 87 L 152 103" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 35 160 L 47 160" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 43 153 L 39 167" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 155 170 L 167 170" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 163 163 L 159 177" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Glow dots -->
+  <circle cx="100" cy="130" r="6" fill="rgba(255,240,0,0.3)"/>
+  <circle cx="100" cy="130" r="3" fill="rgba(255,255,200,0.5)"/>
+  <text x="100" y="268" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="rgba(255,220,0,0.8)" text-anchor="middle" letter-spacing="3">ELECTRIC</text>
+</svg>

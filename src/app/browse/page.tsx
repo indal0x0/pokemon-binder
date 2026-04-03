@@ -31,8 +31,8 @@ export default function BrowsePage() {
     }
     setSearching(true)
     try {
-      const data = await window.electronAPI.searchTcg(q.trim())
-      setResults(data)
+      const { cards } = await window.electronAPI.searchTcg(q.trim())
+      setResults(cards)
     } catch {
       toast.error('Search failed')
     } finally {

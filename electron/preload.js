@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('scan:page', binderId, pageId, imagePath),
 
   // TCG card browser search
-  searchTcg: (query) => ipcRenderer.invoke('tcg:search', query),
+  searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 
   // Get the URL to display a stored image
   // imagePath is like "uploads/binderId/filename"

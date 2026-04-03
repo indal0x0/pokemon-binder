@@ -58,9 +58,13 @@ export default function PageDetailPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<TcgCardResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [searchPage, setSearchPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentQueryRef = useRef('')
 
   // Edit dimensions dialog
   const [editDimsOpen, setEditDimsOpen] = useState(false)
@@ -97,18 +101,39 @@ export default function PageDetailPage() {
   const runSearch = useCallback(async (q: string) => {
     if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
       setSearchResults([])
+      setHasMore(false)
+      setSearchPage(1)
       return
     }
+    currentQueryRef.current = q.trim()
     setSearching(true)
+    setSearchPage(1)
     try {
-      const data = await window.electronAPI.searchTcg(q.trim())
-      setSearchResults(data)
+      const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), 1)
+      setSearchResults(cards)
+      setHasMore(more)
     } catch {
       toast.error('Search failed')
     } finally {
       setSearching(false)
     }
   }, [])
+
+  async function loadMore() {
+    if (!window.electronAPI || loadingMore) return
+    const nextPage = searchPage + 1
+    setLoadingMore(true)
+    try {
+      const { cards, hasMore: more } = await window.electronAPI.searchTcg(currentQueryRef.current, nextPage)
+      setSearchResults(prev => [...prev, ...cards])
+      setHasMore(more)
+      setSearchPage(nextPage)
+    } catch {
+      toast.error('Failed to load more')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   function handleSearchChange(value: string) {
     setSearchQuery(value)
@@ -435,6 +460,12 @@ export default function PageDetailPage() {
                   <p className="text-xs">No results for &quot;{searchQuery}&quot;</p>
                 </div>
               )}
+              {searching && searchResults.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 mx-auto mb-2 animate-spin" />
+                  <p className="text-xs">Searching...</p>
+                </div>
+              )}
               {searchResults.map(card => {
                 const selected = selectedCards.has(card.tcgApiId)
                 return (
@@ -474,6 +505,15 @@ export default function PageDetailPage() {
                   </button>
                 )
               })}
+              {hasMore && (
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {loadingMore ? <><Loader2 className="h-3 w-3 animate-spin" />Loading...</> : 'Load more results'}
+                </button>
+              )}
             </div>
 
             {/* Footer */}

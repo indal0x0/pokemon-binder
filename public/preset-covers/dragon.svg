@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <defs>
+    <linearGradient id="drbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#030b1a"/>
+      <stop offset="100%" stop-color="#0a1f3d"/>
+    </linearGradient>
+    <radialGradient id="drglow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="rgba(50,100,255,0.15)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="280" fill="url(#drbg)"/>
+  <rect width="200" height="280" fill="url(#drglow)"/>
+  <!-- Dragon scale pattern (rows of overlapping circles) -->
+  <!-- Row 1 -->
+  <path d="M 0 30 Q 10 15 20 30 A 15 15 0 0 1 0 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 20 30 Q 30 15 40 30 A 15 15 0 0 1 20 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 40 30 Q 50 15 60 30 A 15 15 0 0 1 40 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 60 30 Q 70 15 80 30 A 15 15 0 0 1 60 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 80 30 Q 90 15 100 30 A 15 15 0 0 1 80 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 100 30 Q 110 15 120 30 A 15 15 0 0 1 100 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 120 30 Q 130 15 140 30 A 15 15 0 0 1 120 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 140 30 Q 150 15 160 30 A 15 15 0 0 1 140 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 160 30 Q 170 15 180 30 A 15 15 0 0 1 160 30" fill="rgba(50,80,180,0.25)"/>
+  <path d="M 180 30 Q 190 15 200 30 A 15 15 0 0 1 180 30" fill="rgba(50,80,180,0.25)"/>
+  <!-- Row 2 offset -->
+  <path d="M -10 55 Q 0 40 10 55 A 15 15 0 0 1 -10 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 10 55 Q 20 40 30 55 A 15 15 0 0 1 10 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 30 55 Q 40 40 50 55 A 15 15 0 0 1 30 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 50 55 Q 60 40 70 55 A 15 15 0 0 1 50 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 70 55 Q 80 40 90 55 A 15 15 0 0 1 70 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 90 55 Q 100 40 110 55 A 15 15 0 0 1 90 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 110 55 Q 120 40 130 55 A 15 15 0 0 1 110 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 130 55 Q 140 40 150 55 A 15 15 0 0 1 130 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 150 55 Q 160 40 170 55 A 15 15 0 0 1 150 55" fill="rgba(40,70,200,0.22)"/>
+  <path d="M 170 55 Q 180 40 190 55 A 15 15 0 0 1 170 55" fill="rgba(40,70,200,0.22)"/>
+  <!-- Dragon claw marks in center -->
+  <path d="M 70 100 Q 100 120 130 100" stroke="#4169e1" stroke-width="2" fill="none" opacity="0.5"/>
+  <!-- Dragon silhouette simplified (wings + body) -->
+  <!-- Body -->
+  <ellipse cx="100" cy="160" rx="25" ry="40" fill="#1a3a8a" opacity="0.8"/>
+  <!-- Left wing -->
+  <path d="M 80 150 Q 30 110 20 150 Q 30 170 75 165 Z" fill="#1a3a8a" opacity="0.7"/>
+  <path d="M 80 150 Q 30 110 20 150" fill="none" stroke="#4169e1" stroke-width="1.5" opacity="0.5"/>
+  <!-- Right wing -->
+  <path d="M 120 150 Q 170 110 180 150 Q 170 170 125 165 Z" fill="#1a3a8a" opacity="0.7"/>
+  <path d="M 120 150 Q 170 110 180 150" fill="none" stroke="#4169e1" stroke-width="1.5" opacity="0.5"/>
+  <!-- Dragon head -->
+  <ellipse cx="100" cy="115" rx="18" ry="14" fill="#2255cc" opacity="0.9"/>
+  <!-- Dragon eye -->
+  <ellipse cx="107" cy="112" rx="4" ry="5" fill="#00ffff" opacity="0.8"/>
+  <circle cx="108" cy="112" r="2" fill="#001a1a"/>
+  <!-- Flames from mouth -->
+  <path d="M 88 120 Q 75 130 70 145" stroke="#4169e1" stroke-width="2" fill="none" opacity="0.6"/>
+  <!-- Glowing outline -->
+  <ellipse cx="100" cy="160" rx="25" ry="40" fill="none" stroke="rgba(65,105,225,0.4)" stroke-width="1.5"/>
+  <text x="100" y="268" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="rgba(100,149,255,0.8)" text-anchor="middle" letter-spacing="3">DRAGON</text>
+</svg>

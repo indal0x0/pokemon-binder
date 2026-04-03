@@ -9,6 +9,8 @@ export interface BinderRow {
   description: string | null
   coverColor: string | null
   coverImagePath: string | null
+  coverPattern: string | null
+  coverPreset: string | null
   createdAt: string
   updatedAt: string
   totalValue?: number
@@ -30,6 +32,7 @@ export interface PageRow {
   rows: number
   createdAt: string
   cardCount?: number
+  firstCardImageUrl?: string | null
   cards?: CardRow[]
 }
 
@@ -73,6 +76,11 @@ export interface TcgCardResult {
   priceUpdatedAt: string | null
 }
 
+export interface TcgSearchResult {
+  cards: TcgCardResult[]
+  hasMore: boolean
+}
+
 interface ElectronAPI {
   isElectron: true
 
@@ -82,8 +90,8 @@ interface ElectronAPI {
 
   listBinders(): Promise<BinderRow[]>
   getBinder(id: string): Promise<(BinderRow & { pages: PageRow[]; cards: CardRow[] }) | null>
-  createBinder(data: { name: string; description?: string; coverColor?: string | null; coverImagePath?: string | null }): Promise<BinderRow>
-  updateBinder(id: string, data: { name?: string; description?: string; coverColor?: string | null; coverImagePath?: string | null }): Promise<BinderRow>
+  createBinder(data: { name: string; description?: string; coverColor?: string | null; coverImagePath?: string | null; coverPattern?: string | null; coverPreset?: string | null }): Promise<BinderRow>
+  updateBinder(id: string, data: { name?: string; description?: string; coverColor?: string | null; coverImagePath?: string | null; coverPattern?: string | null; coverPreset?: string | null }): Promise<BinderRow>
   uploadCover(binderId: string, file: File): Promise<string>
   deleteBinder(id: string): Promise<boolean>
 
@@ -104,7 +112,7 @@ interface ElectronAPI {
 
   uploadImage(binderId: string, file: File): Promise<string>
   scanPage(binderId: string, pageId: string, imagePath: string): Promise<{ cards: CardRow[]; count: number }>
-  searchTcg(query: string): Promise<TcgCardResult[]>
+  searchTcg(query: string, page?: number): Promise<TcgSearchResult>
   getImageUrl(imagePath: string | null): string | null
 }
 

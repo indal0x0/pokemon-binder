@@ -57,26 +57,28 @@ async function fetchCardPrices(tcgApiId) {
   }
 }
 
-async function searchCards(query) {
-  if (!query || query.trim().length < 2) return []
+const PAGE_SIZE = 30
 
-  const url = `${TCGDEX_BASE}/cards?name=${encodeURIComponent(query.trim())}&pagination:itemsPerPage=24`
-  let cards
+async function searchCards(query, page = 1) {
+  if (!query || query.trim().length < 2) return { cards: [], hasMore: false }
+
+  const url = `${TCGDEX_BASE}/cards?name=${encodeURIComponent(query.trim())}&pagination:itemsPerPage=${PAGE_SIZE}&pagination:page=${page}`
+  let rawCards
   try {
     const response = await fetch(url)
-    if (!response.ok) return []
-    cards = await response.json()
-    if (!Array.isArray(cards)) return []
+    if (!response.ok) return { cards: [], hasMore: false }
+    rawCards = await response.json()
+    if (!Array.isArray(rawCards)) return { cards: [], hasMore: false }
   } catch {
-    return []
+    return { cards: [], hasMore: false }
   }
 
   // Fetch set info for all unique setIds in parallel
-  const uniqueSetIds = [...new Set(cards.map(c => extractSetId(c.id)))]
+  const uniqueSetIds = [...new Set(rawCards.map(c => extractSetId(c.id)))]
   const setInfos = await Promise.all(uniqueSetIds.map(id => getSetInfo(id)))
   const setMap = Object.fromEntries(uniqueSetIds.map((id, i) => [id, setInfos[i]]))
 
-  return cards.map(card => {
+  const cards = rawCards.map(card => {
     const setId = extractSetId(card.id)
     const setInfo = setMap[setId]
     const imageUrl = card.image ? `${card.image}/high.png` : null
@@ -97,6 +99,8 @@ async function searchCards(query) {
       priceUpdatedAt: null,
     }
   })
+
+  return { cards, hasMore: rawCards.length === PAGE_SIZE }
 }
 
 // Stub — AI scanning is disabled (Coming Soon)

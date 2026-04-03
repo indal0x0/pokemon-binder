@@ -83,6 +83,8 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binder_cards ADD COLUMN position INTEGER`,
     `ALTER TABLE binders ADD COLUMN coverColor TEXT`,
     `ALTER TABLE binders ADD COLUMN coverImagePath TEXT`,
+    `ALTER TABLE binders ADD COLUMN coverPattern TEXT`,
+    `ALTER TABLE binders ADD COLUMN coverPreset TEXT`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -107,17 +109,22 @@ function getBinders() {
 function getBinderById(id) {
   const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(id)
   if (!binder) return null
-  const pages = db.prepare('SELECT *, (SELECT COUNT(*) FROM binder_cards WHERE pageId = p.id) as cardCount FROM pages p WHERE binderId = ? ORDER BY position ASC, pageNumber ASC').all(id)
+  const pages = db.prepare(`
+    SELECT p.*,
+      (SELECT COUNT(*) FROM binder_cards WHERE pageId = p.id) as cardCount,
+      (SELECT imageUrl FROM binder_cards WHERE pageId = p.id ORDER BY COALESCE(position, 9999) ASC, createdAt ASC LIMIT 1) as firstCardImageUrl
+    FROM pages p WHERE binderId = ? ORDER BY position ASC, pageNumber ASC
+  `).all(id)
   const cards = db.prepare('SELECT * FROM binder_cards WHERE binderId = ? ORDER BY createdAt ASC').all(id)
   const totalValue = cards.reduce((sum, c) => sum + (c.priceMarket || 0) * c.quantity, 0)
   const cardCount = cards.reduce((sum, c) => sum + c.quantity, 0)
   return { ...binder, pages, cards, totalValue, cardCount }
 }
 
-function createBinder({ name, description, coverColor, coverImagePath }) {
+function createBinder({ name, description, coverColor, coverImagePath, coverPattern, coverPreset }) {
   const id = uid()
   const ts = now()
-  db.prepare('INSERT INTO binders (id, name, description, coverColor, coverImagePath, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, description || null, coverColor || null, coverImagePath || null, ts, ts)
+  db.prepare('INSERT INTO binders (id, name, description, coverColor, coverImagePath, coverPattern, coverPreset, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, description || null, coverColor || null, coverImagePath || null, coverPattern || null, coverPreset || null, ts, ts)
   return db.prepare('SELECT * FROM binders WHERE id = ?').get(id)
 }
 
@@ -133,6 +140,8 @@ function updateBinder(id, updates) {
 
   if ('coverColor' in updates) { parts.push('coverColor = ?'); params.push(updates.coverColor ?? null) }
   if ('coverImagePath' in updates) { parts.push('coverImagePath = ?'); params.push(updates.coverImagePath ?? null) }
+  if ('coverPattern' in updates) { parts.push('coverPattern = ?'); params.push(updates.coverPattern ?? null) }
+  if ('coverPreset' in updates) { parts.push('coverPreset = ?'); params.push(updates.coverPreset ?? null) }
 
   params.push(id)
   db.prepare(`UPDATE binders SET ${parts.join(', ')} WHERE id = ?`).run(...params)
@@ -147,7 +156,9 @@ function deleteBinder(id) {
 
 function getPages(binderId) {
   return db.prepare(`
-    SELECT p.*, (SELECT COUNT(*) FROM binder_cards WHERE pageId = p.id) as cardCount
+    SELECT p.*,
+      (SELECT COUNT(*) FROM binder_cards WHERE pageId = p.id) as cardCount,
+      (SELECT imageUrl FROM binder_cards WHERE pageId = p.id ORDER BY COALESCE(position, 9999) ASC, createdAt ASC LIMIT 1) as firstCardImageUrl
     FROM pages p WHERE binderId = ? ORDER BY position ASC, pageNumber ASC
   `).all(binderId)
 }
@@ -188,6 +199,7 @@ function updatePage(id, { name, position, status, rawAiOutput, processedAt, cols
 
 function deletePage(id) {
   const page = db.prepare('SELECT imagePath FROM pages WHERE id = ?').get(id)
+  db.prepare('DELETE FROM binder_cards WHERE pageId = ?').run(id)
   db.prepare('DELETE FROM pages WHERE id = ?').run(id)
   return page?.imagePath || null
 }

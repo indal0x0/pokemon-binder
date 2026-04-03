@@ -154,13 +154,16 @@ export function PagesGallery({
               return (
                 <div key={page.id} className="relative group rounded-lg border bg-card overflow-hidden">
                   <Link href={`/page-detail?id=${page.id}&binderId=${binderId}`}>
-                    {imageUrl ? (
+                    {page.firstCardImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={page.firstCardImageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
+                    ) : imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={imageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
                     ) : (
                       <div className="w-full aspect-[3/4] bg-secondary flex flex-col items-center justify-center gap-1">
-                        <LayoutGrid className="h-5 w-5 text-muted-foreground/40" />
-                        <span className="text-xs text-muted-foreground">{page.cols ?? 3}×{page.rows ?? 3}</span>
+                        <span className="text-sm font-semibold text-muted-foreground">{page.pageNumber}</span>
+                        <span className="text-xs text-muted-foreground/60">{page.cols ?? 3}×{page.rows ?? 3}</span>
                       </div>
                     )}
                   </Link>

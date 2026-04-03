@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <defs>
+    <radialGradient id="psbg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#4a0a4a"/>
+      <stop offset="100%" stop-color="#0d000d"/>
+    </radialGradient>
+    <radialGradient id="psglow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,80,180,0.2)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="38%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ff80cc"/>
+      <stop offset="100%" stop-color="#c2185b"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="280" fill="url(#psbg)"/>
+  <rect width="200" height="280" fill="url(#psglow)"/>
+  <!-- Cosmic rings / orbits -->
+  <ellipse cx="100" cy="130" rx="75" ry="30" fill="none" stroke="rgba(255,100,180,0.2)" stroke-width="1.5" transform="rotate(20 100 130)"/>
+  <ellipse cx="100" cy="130" rx="60" ry="25" fill="none" stroke="rgba(255,100,180,0.15)" stroke-width="1" transform="rotate(-30 100 130)"/>
+  <ellipse cx="100" cy="130" rx="80" ry="20" fill="none" stroke="rgba(200,80,255,0.15)" stroke-width="1" transform="rotate(60 100 130)"/>
+  <!-- Central psychic orb -->
+  <circle cx="100" cy="120" r="42" fill="url(#orb)" opacity="0.9"/>
+  <circle cx="100" cy="120" r="42" fill="none" stroke="rgba(255,200,255,0.4)" stroke-width="2"/>
+  <!-- Eye pattern inside orb -->
+  <ellipse cx="100" cy="120" rx="22" ry="14" fill="#1a001a"/>
+  <circle cx="100" cy="120" r="9" fill="#ff3399"/>
+  <circle cx="100" cy="120" r="5" fill="#1a001a"/>
+  <circle cx="96" cy="116" r="2" fill="rgba(255,255,255,0.6)"/>
+  <!-- Orb highlight -->
+  <ellipse cx="83" cy="103" rx="12" ry="8" fill="rgba(255,255,255,0.2)" transform="rotate(-20 83 103)"/>
+  <!-- Floating stars / sparkles -->
+  <path d="M 40 60 L 42 54 L 44 60 L 50 62 L 44 64 L 42 70 L 40 64 L 34 62 Z" fill="#ff80cc" opacity="0.7"/>
+  <path d="M 155 70 L 157 64 L 159 70 L 165 72 L 159 74 L 157 80 L 155 74 L 149 72 Z" fill="#ff80cc" opacity="0.6"/>
+  <path d="M 25 160 L 27 155 L 29 160 L 34 162 L 29 164 L 27 169 L 25 164 L 20 162 Z" fill="#cc66ff" opacity="0.5"/>
+  <path d="M 168 150 L 170 145 L 172 150 L 177 152 L 172 154 L 170 159 L 168 154 L 163 152 Z" fill="#cc66ff" opacity="0.5"/>
+  <!-- Small orbiting dots -->
+  <circle cx="55" cy="100" r="3" fill="#ff80cc" opacity="0.7"/>
+  <circle cx="148" cy="110" r="3" fill="#cc66ff" opacity="0.7"/>
+  <circle cx="62" cy="145" r="2.5" fill="#ff80cc" opacity="0.6"/>
+  <circle cx="142" cy="138" r="2" fill="#cc66ff" opacity="0.6"/>
+  <text x="100" y="268" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="rgba(255,120,200,0.8)" text-anchor="middle" letter-spacing="3">PSYCHIC</text>
+</svg>

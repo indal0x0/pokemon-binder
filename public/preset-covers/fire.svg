@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <defs>
+    <linearGradient id="firebg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a0500"/>
+      <stop offset="100%" stop-color="#3d0c00"/>
+    </linearGradient>
+    <radialGradient id="fireglow" cx="50%" cy="80%" r="60%">
+      <stop offset="0%" stop-color="#ff6b00" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="280" fill="url(#firebg)"/>
+  <rect width="200" height="280" fill="url(#fireglow)"/>
+  <!-- Flame shapes - background large flames -->
+  <path d="M 100 260 Q 40 220 55 170 Q 65 140 45 110 Q 75 130 70 160 Q 80 120 100 80 Q 120 120 130 160 Q 125 130 155 110 Q 135 140 145 170 Q 160 220 100 260 Z" fill="#e74c3c" opacity="0.7"/>
+  <!-- Middle flames -->
+  <path d="M 100 250 Q 55 215 65 175 Q 75 150 60 125 Q 85 145 80 170 Q 90 135 100 100 Q 110 135 120 170 Q 115 145 140 125 Q 125 150 135 175 Q 145 215 100 250 Z" fill="#e67e22" opacity="0.85"/>
+  <!-- Inner bright flame -->
+  <path d="M 100 240 Q 68 210 75 178 Q 83 158 72 140 Q 92 155 88 178 Q 95 150 100 120 Q 105 150 112 178 Q 108 155 128 140 Q 117 158 125 178 Q 132 210 100 240 Z" fill="#f39c12"/>
+  <!-- Hottest center -->
+  <path d="M 100 225 Q 80 205 85 185 Q 92 168 88 158 Q 100 165 100 145 Q 100 165 112 158 Q 108 168 115 185 Q 120 205 100 225 Z" fill="#f9ca24"/>
+  <!-- Ember particles -->
+  <circle cx="70" cy="130" r="2.5" fill="#f39c12" opacity="0.8"/>
+  <circle cx="140" cy="145" r="2" fill="#e74c3c" opacity="0.7"/>
+  <circle cx="55" cy="160" r="1.5" fill="#f9ca24" opacity="0.6"/>
+  <circle cx="148" cy="170" r="1.5" fill="#f9ca24" opacity="0.6"/>
+  <circle cx="80" cy="90" r="2" fill="#e67e22" opacity="0.7"/>
+  <circle cx="125" cy="85" r="1.5" fill="#f39c12" opacity="0.6"/>
+  <!-- Fire type symbol area -->
+  <text x="100" y="58" font-family="Arial, sans-serif" font-size="28" text-anchor="middle" fill="rgba(249,202,36,0.5)">🔥</text>
+  <text x="100" y="265" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="rgba(249,162,36,0.8)" text-anchor="middle" letter-spacing="4">FIRE</text>
+</svg>
