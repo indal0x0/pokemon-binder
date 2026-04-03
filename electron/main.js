@@ -297,6 +297,13 @@ ipcMain.handle('upload:image', (_, binderId, filename, arrayBuffer) => {
   return `uploads/${binderId}/${safeFilename}`
 })
 
+// ─── IPC: TCG full card pricing ──────────────────────────────────────────────
+
+ipcMain.handle('tcg:get-card-prices', async (_, tcgApiId) => {
+  const { getFullCardPricing } = require('./tcg')
+  return getFullCardPricing(tcgApiId)
+})
+
 // ─── IPC: Card custom image upload ───────────────────────────────────────────
 
 ipcMain.handle('cards:upload-card-image', (_, cardId, binderId, filename, arrayBuffer) => {

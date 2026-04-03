@@ -13,9 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2 } from 'lucide-react'
+import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, ArrowUpDown, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow, TcgCardResult } from '@/types/electron'
+import { CardDetailModal } from '@/components/CardDetailModal'
+import { formatCurrency } from '@/lib/utils'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -25,6 +27,8 @@ const DIMENSION_PRESETS = [
   { label: '3×4', cols: 3, rows: 4 },
   { label: '4×4', cols: 4, rows: 4 },
 ]
+
+type SortMode = 'default' | 'newest' | 'oldest' | 'price-high' | 'price-low'
 
 interface PageData {
   id: string
@@ -40,7 +44,6 @@ interface PageData {
 export default function PageDetailPage() {
   const router = useRouter()
 
-  // Read URL params after mount (reliable in static export)
   const [pageId, setPageId] = useState('')
   const [binderId, setBinderId] = useState('')
   useEffect(() => {
@@ -53,6 +56,9 @@ export default function PageDetailPage() {
   const [cards, setCards] = useState<CardRow[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Card detail modal
+  const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
+
   // Slide-in card search panel
   const [panelOpen, setPanelOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,6 +69,13 @@ export default function PageDetailPage() {
   const [hasMore, setHasMore] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState(false)
+
+  // Search panel sort + filter
+  const [sortMode, setSortMode] = useState<SortMode>('default')
+  const [filterUnpriced, setFilterUnpriced] = useState(false)
+  const [filterNoImage, setFilterNoImage] = useState(false)
+  const [showSortFilter, setShowSortFilter] = useState(false)
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentQueryRef = useRef('')
 
@@ -297,6 +310,21 @@ export default function PageDetailPage() {
     }
   }
 
+  // ─── Search results: sort + filter ───────────────────────────────────────────
+
+  const displayedResults = (() => {
+    let results = [...searchResults]
+    if (filterUnpriced) results = results.filter(c => c.priceMarket && c.priceMarket > 0)
+    if (filterNoImage) results = results.filter(c => !!c.imageUrl)
+    switch (sortMode) {
+      case 'newest': results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
+      case 'oldest': results.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
+      case 'price-high': results.sort((a, b) => (b.priceMarket ?? -1) - (a.priceMarket ?? -1)); break
+      case 'price-low': results.sort((a, b) => (a.priceMarket ?? 99999) - (b.priceMarket ?? 99999)); break
+    }
+    return results
+  })()
+
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   if (loading || !pageId) {
@@ -308,18 +336,28 @@ export default function PageDetailPage() {
   const rows = page.rows ?? 3
   const totalSlots = cols * rows
 
-  // Build slot array: cards fill from start, rest are null
+  // Use page.binderId as fallback if URL param wasn't captured yet
+  const effectiveBinderId = binderId || page.binderId
+
   const slots: (CardRow | null)[] = Array(totalSlots).fill(null)
   cards.forEach((card, i) => {
     if (i < totalSlots) slots[i] = card
   })
+
+  const sortLabels: Record<SortMode, string> = {
+    default: 'Default',
+    newest: 'Newest First',
+    oldest: 'Oldest First',
+    'price-high': 'Price: High → Low',
+    'price-low': 'Price: Low → High',
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <div className="border-b bg-background z-10 flex-shrink-0">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
-          <Link href={`/binder?id=${binderId}`} className="text-muted-foreground hover:text-foreground">
+          <Link href={`/binder?id=${effectiveBinderId}`} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <h1 className="font-semibold flex-1 truncate">{page.name}</h1>
@@ -337,7 +375,7 @@ export default function PageDetailPage() {
         </div>
       </div>
 
-      {/* Main content — fills remaining height, no scroll */}
+      {/* Main content */}
       <div className="flex-1 overflow-hidden max-w-6xl mx-auto w-full px-6 py-4 flex flex-col">
         {cards.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -380,7 +418,11 @@ export default function PageDetailPage() {
                     {card.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={card.imageUrl}
+                        src={
+                          card.imageUrl.startsWith('uploads/')
+                            ? window.electronAPI?.getImageUrl(card.imageUrl) ?? card.imageUrl
+                            : card.imageUrl
+                        }
                         alt={card.name}
                         className="w-full h-full object-contain select-none pointer-events-none"
                         draggable={false}
@@ -390,8 +432,11 @@ export default function PageDetailPage() {
                         <span className="text-xs text-muted-foreground text-center leading-tight">{card.name}</span>
                       </div>
                     )}
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-end opacity-0 group-hover:opacity-100">
+                    {/* Hover overlay — click to open detail */}
+                    <div
+                      className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-end opacity-0 group-hover:opacity-100 cursor-pointer"
+                      onClick={() => setSelectedCard(card)}
+                    >
                       <div className="w-full px-1.5 pb-1.5 pt-4 bg-gradient-to-t from-black/80 to-transparent">
                         <p className="text-white text-[10px] font-semibold leading-tight drop-shadow line-clamp-2">{card.name}</p>
                         {card.collectorNumber && (
@@ -400,12 +445,15 @@ export default function PageDetailPage() {
                         {card.setName && (
                           <p className="text-white/60 text-[9px] leading-tight drop-shadow truncate">{card.setName}</p>
                         )}
+                        {card.priceMarket && (
+                          <p className="text-white/90 text-[10px] font-semibold leading-tight drop-shadow mt-0.5">{formatCurrency(card.priceMarket)}</p>
+                        )}
                       </div>
                     </div>
                     {/* Delete button */}
                     <button
-                      onClick={() => deleteCard(card.id)}
-                      className="absolute top-1 right-1 bg-background/80 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={e => { e.stopPropagation(); deleteCard(card.id) }}
+                      className="absolute top-1 right-1 bg-background/80 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
                     >
                       <Trash2 className="h-2.5 w-2.5" />
                     </button>
@@ -417,16 +465,22 @@ export default function PageDetailPage() {
         )}
       </div>
 
+      {/* Card detail modal */}
+      <CardDetailModal
+        card={selectedCard}
+        onClose={() => setSelectedCard(null)}
+        onCardUpdated={updated => {
+          setSelectedCard(updated)
+          setCards(prev => prev.map(c => c.id === updated.id ? updated : c))
+        }}
+      />
+
       {/* Slide-in card search panel */}
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/20"
-            onClick={() => setPanelOpen(false)}
-          />
-          {/* Panel */}
-          <div className="relative w-80 h-full bg-background border-l flex flex-col shadow-xl">
+          <div className="absolute inset-0 bg-black/20" onClick={() => setPanelOpen(false)} />
+          <div className="relative w-96 h-full bg-background border-l flex flex-col shadow-xl">
+            {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="font-semibold text-sm">Add Cards</h2>
               <button onClick={() => setPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
@@ -434,6 +488,7 @@ export default function PageDetailPage() {
               </button>
             </div>
 
+            {/* Search input */}
             <div className="px-3 py-2 border-b">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -450,6 +505,69 @@ export default function PageDetailPage() {
               </div>
             </div>
 
+            {/* Sort + filter controls */}
+            {searchResults.length > 0 && (
+              <div className="px-3 py-2 border-b">
+                <button
+                  onClick={() => setShowSortFilter(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <SlidersHorizontal className="h-3 w-3" />
+                  Sort & Filter
+                  {(sortMode !== 'default' || filterUnpriced || filterNoImage) && (
+                    <span className="ml-1 px-1.5 py-0 rounded-full bg-primary/20 text-primary text-[10px]">active</span>
+                  )}
+                </button>
+                {showSortFilter && (
+                  <div className="mt-2 space-y-2">
+                    {/* Sort */}
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Sort</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(Object.keys(sortLabels) as SortMode[]).map(mode => (
+                          <button
+                            key={mode}
+                            onClick={() => setSortMode(mode)}
+                            className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                              sortMode === mode
+                                ? 'bg-primary/10 border-primary/30 text-primary'
+                                : 'border-border/50 text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {sortLabels[mode]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Filters */}
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Filter</p>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setFilterUnpriced(v => !v)}
+                          className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                            filterUnpriced ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Has price
+                        </button>
+                        <button
+                          onClick={() => setFilterNoImage(v => !v)}
+                          className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                            filterNoImage ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Has image
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/50">{displayedResults.length} of {searchResults.length} shown</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Results list */}
             <div className="flex-1 overflow-y-auto">
               {searchResults.length === 0 && searchQuery.length < 2 && (
                 <div className="text-center py-12 text-muted-foreground">
@@ -467,13 +585,13 @@ export default function PageDetailPage() {
                   <p className="text-xs">Searching...</p>
                 </div>
               )}
-              {searchResults.map(card => {
+              {displayedResults.map(card => {
                 const selected = selectedCards.has(card.tcgApiId)
                 return (
                   <button
                     key={card.tcgApiId}
                     onClick={() => toggleCardSelection(card.tcgApiId)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/30 text-left ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors border-b border-border/30 text-left ${
                       selected ? 'bg-primary/5' : ''
                     }`}
                   >
@@ -482,21 +600,26 @@ export default function PageDetailPage() {
                       <img
                         src={card.imageUrl}
                         alt={card.name}
-                        className="w-9 h-12 object-cover rounded flex-shrink-0"
+                        className="w-14 h-20 object-cover rounded-md flex-shrink-0 shadow-sm"
                       />
                     ) : (
-                      <div className="w-9 h-12 bg-secondary rounded flex-shrink-0 flex items-center justify-center">
-                        <span className="text-[8px] text-muted-foreground text-center px-0.5">{card.name}</span>
+                      <div className="w-14 h-20 bg-secondary rounded-md flex-shrink-0 flex items-center justify-center shadow-sm">
+                        <span className="text-[9px] text-muted-foreground text-center px-1 leading-tight">{card.name}</span>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
-                      {card.collectorNumber && (
-                        <p className="text-[10px] text-muted-foreground">#{card.collectorNumber}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {card.setName || card.setId}{card.year ? ` (${card.year})` : ''}
+                      <p className="text-sm font-medium leading-tight">{card.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {card.setName || card.setId}{card.year ? ` · ${card.year}` : ''}
                       </p>
+                      {card.collectorNumber && (
+                        <p className="text-xs text-muted-foreground/60">#{card.collectorNumber}</p>
+                      )}
+                      {card.priceMarket ? (
+                        <p className="text-xs font-semibold text-primary mt-1">{formatCurrency(card.priceMarket)}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/40 mt-1">No price</p>
+                      )}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                       selected ? 'bg-primary border-primary' : 'border-border'
@@ -575,24 +698,12 @@ export default function PageDetailPage() {
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs">Columns</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={dimsCustomCols}
-                      onChange={e => setDimsCustomCols(Number(e.target.value))}
-                    />
+                    <Input type="number" min={1} max={10} value={dimsCustomCols} onChange={e => setDimsCustomCols(Number(e.target.value))} />
                   </div>
                   <span className="mt-5 text-muted-foreground">×</span>
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs">Rows</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={dimsCustomRows}
-                      onChange={e => setDimsCustomRows(Number(e.target.value))}
-                    />
+                    <Input type="number" min={1} max={10} value={dimsCustomRows} onChange={e => setDimsCustomRows(Number(e.target.value))} />
                   </div>
                 </div>
               )}
@@ -600,10 +711,9 @@ export default function PageDetailPage() {
                 {editDims.cols} × {editDims.rows} = {editDims.cols * editDims.rows} card slots
               </p>
             </div>
-
             {overflowCount > 0 && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                {overflowCount} card{overflowCount !== 1 ? 's' : ''} won&apos;t fit in the new size and will be moved to a new page automatically.
+                {overflowCount} card{overflowCount !== 1 ? 's' : ''} won&apos;t fit and will be moved to a new page automatically.
               </div>
             )}
           </div>

@@ -82,6 +82,26 @@ export interface TcgSearchResult {
   hasMore: boolean
 }
 
+export interface CardPricingVariant {
+  label: string
+  low: number | null
+  mid: number | null
+  market: number | null
+  high: number | null
+}
+
+export interface FullCardPricing {
+  variants: CardPricingVariant[]
+  bestMarket: number | null
+  cardmarket: {
+    avg: number | null
+    low: number | null
+    trend: number | null
+    avg7: number | null
+    avg30: number | null
+  } | null
+}
+
 interface ElectronAPI {
   isElectron: true
 
@@ -109,6 +129,7 @@ interface ElectronAPI {
   createCard(data: Partial<CardRow>): Promise<CardRow>
   updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null }): Promise<CardRow>
   uploadCardImage(cardId: string, binderId: string, file: File): Promise<CardRow>
+  getCardPrices(tcgApiId: string): Promise<FullCardPricing | null>
   deleteCard(id: string): Promise<boolean>
   refreshPrices(binderId: string): Promise<{ updated: number }>
 

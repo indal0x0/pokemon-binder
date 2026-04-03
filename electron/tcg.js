@@ -57,6 +57,51 @@ async function fetchCardPrices(tcgApiId) {
   }
 }
 
+async function getFullCardPricing(tcgApiId) {
+  try {
+    const response = await fetch(`${TCGDEX_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
+    if (!response.ok) return null
+    const card = await response.json()
+    const tcgplayer = card.pricing?.tcgplayer ?? null
+    const cardmarket = card.pricing?.cardmarket ?? null
+
+    // Build variants array from all available tcgplayer keys
+    const variants = []
+    if (tcgplayer) {
+      const variantLabels = { normal: 'Normal', reverseHolo: 'Reverse Holo', holofoil: 'Holofoil', firstEdition: '1st Edition', unlimited: 'Unlimited' }
+      for (const [key, label] of Object.entries(variantLabels)) {
+        if (tcgplayer[key] && typeof tcgplayer[key] === 'object') {
+          const p = tcgplayer[key]
+          variants.push({
+            label,
+            low: p.lowPrice ?? null,
+            mid: p.midPrice ?? null,
+            market: p.marketPrice ?? null,
+            high: p.highPrice ?? null,
+          })
+        }
+      }
+    }
+
+    // Best market price for condition estimates
+    const bestMarket = variants.find(v => v.market)?.market ?? null
+
+    return {
+      variants,
+      bestMarket,
+      cardmarket: cardmarket ? {
+        avg: cardmarket.avg ?? null,
+        low: cardmarket.low ?? null,
+        trend: cardmarket.trend ?? null,
+        avg7: cardmarket.avg7 ?? null,
+        avg30: cardmarket.avg30 ?? null,
+      } : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 const PAGE_SIZE = 30
 
 async function searchCards(query, page = 1) {
@@ -112,4 +157,4 @@ async function refreshCardPrices(tcgApiId) {
   return fetchCardPrices(tcgApiId)
 }
 
-module.exports = { matchCard, searchCards, refreshCardPrices, fetchCardPrices }
+module.exports = { matchCard, searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing }

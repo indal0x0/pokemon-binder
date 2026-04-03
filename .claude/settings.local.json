@@ -66,7 +66,8 @@
       "WebFetch(domain:tcgdex.dev)",
       "WebFetch(domain:api.tcgdex.net)",
       "WebSearch",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npx shadcn@latest add tabs --yes)"
     ]
   }
 }

@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // TCG card browser search
   searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 
+  // Fetch full pricing breakdown for a card (variants + cardmarket)
+  getCardPrices: (tcgApiId) => ipcRenderer.invoke('tcg:get-card-prices', tcgApiId),
+
   // Get the URL to display a stored image
   // imagePath is like "uploads/binderId/filename"
   getImageUrl: (imagePath) => {

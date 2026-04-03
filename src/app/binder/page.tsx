@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
 import { BinderCover } from '@/components/BinderCover'
@@ -25,6 +25,33 @@ export default function BinderPage() {
   const [coverOpen, setCoverOpen] = useState(false)
   const [cover, setCover] = useState<CoverState>(defaultCoverState())
   const [coverSaving, setCoverSaving] = useState(false)
+
+  // Inline name editing
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  function startEditName() {
+    if (!binder) return
+    setNameValue(binder.name)
+    setEditingName(true)
+    setTimeout(() => nameInputRef.current?.select(), 0)
+  }
+
+  async function saveEditName() {
+    if (!binder || !window.electronAPI) return
+    const trimmed = nameValue.trim()
+    if (!trimmed || trimmed === binder.name) { setEditingName(false); return }
+    try {
+      await window.electronAPI.updateBinder(binder.id, { name: trimmed })
+      setBinder(prev => prev ? { ...prev, name: trimmed } : null)
+    } catch { /* keep existing name */ }
+    setEditingName(false)
+  }
+
+  function cancelEditName() {
+    setEditingName(false)
+  }
 
   const binderId = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('id') ?? ''
@@ -93,8 +120,27 @@ export default function BinderPage() {
             <Pencil className="h-3.5 w-3.5 text-white" />
           </div>
         </div>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">{binder.name}</h1>
+        <div className="flex-1 min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={nameInputRef}
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEditName(); if (e.key === 'Escape') cancelEditName() }}
+                onBlur={saveEditName}
+                className="text-xl font-bold bg-transparent border-b border-primary outline-none w-full min-w-0"
+                autoFocus
+              />
+              <button onClick={saveEditName} className="text-primary hover:text-primary/80 flex-shrink-0"><Check className="h-4 w-4" /></button>
+              <button onClick={cancelEditName} className="text-muted-foreground hover:text-foreground flex-shrink-0"><X className="h-4 w-4" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 group cursor-pointer" onClick={startEditName}>
+              <h1 className="text-xl font-bold truncate">{binder.name}</h1>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </div>
+          )}
           {binder.description && <p className="text-sm text-muted-foreground">{binder.description}</p>}
         </div>
         <ThemeSwitcher />
