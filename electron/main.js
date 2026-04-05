@@ -326,6 +326,45 @@ ipcMain.handle('tcg:scrape-binder-prices', async (_, binderId) => {
   return scrapeBatchPrices(store, getCardsForRefresh(binderId))
 })
 
+// ─── Auto-updater ─────────────────────────────────────────────────────────────
+
+function setupAutoUpdater() {
+  if (isDev) return  // never auto-update in dev
+
+  const { autoUpdater } = require('electron-updater')
+
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update available',
+      message: 'A new version of Pokemon Binder is downloading in the background.\nIt will install automatically when you close the app.',
+      buttons: ['OK'],
+    }).catch(() => {})
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update ready',
+      message: 'The update has been downloaded. Restart now to apply it?',
+      buttons: ['Restart', 'Later'],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall()
+    }).catch(() => {})
+  })
+
+  autoUpdater.on('error', err => {
+    console.warn('Auto-updater error:', err?.message ?? err)
+  })
+
+  // Check 3 seconds after window is ready to avoid slowing startup
+  setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 3000)
+}
+
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
@@ -338,6 +377,7 @@ app.whenReady().then(() => {
   try {
     initDatabase()
     createWindow()
+    setupAutoUpdater()
   } catch (err) {
     console.error('Failed to start Pokemon Binder:', err)
     dialog.showErrorBox('Failed to start', String(err))

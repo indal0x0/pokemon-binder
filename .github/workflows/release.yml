@@ -23,13 +23,10 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npm run electron:rebuild
 
-      - name: Build Windows installer
-        run: npm run electron:build
+      - name: Build Next.js static export
+        run: npx next build
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.exe
-          generate_release_notes: true
+      - name: Build installer and publish release
+        run: npx electron-builder --win --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
