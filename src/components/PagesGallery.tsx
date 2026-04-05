@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ChevronUp, ChevronDown, Pencil, Trash2, CheckCircle, AlertCircle, Loader2, Plus, LayoutGrid } from 'lucide-react'
+import { ChevronUp, ChevronDown, Pencil, Trash2, CheckCircle, AlertCircle, Loader2, Plus, LayoutGrid, Image } from 'lucide-react'
 import { toast } from 'sonner'
-import type { PageRow } from '@/types/electron'
+import { useRef } from 'react'
+import type { PageRow, CardRow } from '@/types/electron'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -41,6 +42,12 @@ export function PagesGallery({
   const [renameValue, setRenameValue] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<PageRow | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Thumbnail edit
+  const [thumbEditPage, setThumbEditPage] = useState<PageRow | null>(null)
+  const [thumbCards, setThumbCards] = useState<CardRow[]>([])
+  const [thumbCardsLoading, setThumbCardsLoading] = useState(false)
+  const thumbFileRef = useRef<HTMLInputElement>(null)
 
   // New page dialog
   const [newPageOpen, setNewPageOpen] = useState(false)
@@ -131,6 +138,43 @@ export function PagesGallery({
     }
   }
 
+  async function openThumbEdit(page: PageRow) {
+    setThumbEditPage(page)
+    setThumbCards([])
+    setThumbCardsLoading(true)
+    try {
+      const cards = await window.electronAPI!.listCards(binderId, page.id)
+      setThumbCards(cards.filter(c => c.imageUrl))
+    } catch {
+      // ignore
+    } finally {
+      setThumbCardsLoading(false)
+    }
+  }
+
+  async function applyThumbImage(page: PageRow, imagePath: string) {
+    if (!window.electronAPI) return
+    try {
+      await window.electronAPI.updatePage(page.id, { imagePath })
+      setPages(prev => prev.map(p => p.id === page.id ? { ...p, imagePath } : p))
+      setThumbEditPage(null)
+      onRefresh()
+      toast.success('Thumbnail updated')
+    } catch {
+      toast.error('Failed to update thumbnail')
+    }
+  }
+
+  async function handleThumbUpload(page: PageRow, file: File) {
+    if (!window.electronAPI) return
+    try {
+      const path = await window.electronAPI.uploadImage(page.binderId, file)
+      await applyThumbImage(page, path)
+    } catch {
+      toast.error('Failed to upload image')
+    }
+  }
+
   return (
     <>
       <div className="mb-8">
@@ -213,6 +257,13 @@ export function PagesGallery({
                       title="Rename"
                     >
                       <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={e => { e.preventDefault(); openThumbEdit(page) }}
+                      className="bg-background/90 rounded p-0.5 hover:bg-background"
+                      title="Edit thumbnail"
+                    >
+                      <Image className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setDeleteTarget(page)}
@@ -345,6 +396,69 @@ export function PagesGallery({
             <Button variant="destructive" onClick={deletePage} disabled={saving}>
               {saving ? 'Deleting...' : 'Delete'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Thumbnail edit dialog */}
+      <Dialog open={!!thumbEditPage} onOpenChange={open => !open && setThumbEditPage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit thumbnail — {thumbEditPage?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Upload option */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Upload image</p>
+              <input
+                ref={thumbFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file && thumbEditPage) handleThumbUpload(thumbEditPage, file)
+                }}
+              />
+              <Button variant="outline" size="sm" onClick={() => thumbFileRef.current?.click()}>
+                Choose file
+              </Button>
+            </div>
+
+            {/* Pick from cards */}
+            {thumbCardsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading cards...
+              </div>
+            ) : thumbCards.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Use card image</p>
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                  {thumbCards.map(card => (
+                    <button
+                      key={card.id}
+                      onClick={() => thumbEditPage && applyThumbImage(thumbEditPage, card.imageUrl!)}
+                      className="rounded border border-border hover:border-primary overflow-hidden transition-colors"
+                      title={card.name}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={
+                          card.imageUrl!.startsWith('uploads/')
+                            ? window.electronAPI?.getImageUrl(card.imageUrl!) ?? card.imageUrl!
+                            : card.imageUrl!
+                        }
+                        alt={card.name}
+                        className="w-full aspect-[2.5/3.5] object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setThumbEditPage(null)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

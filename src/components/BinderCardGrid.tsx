@@ -128,10 +128,26 @@ export function BinderCardGrid({
                   {card.priceMarket ? formatCurrency(card.priceMarket) : <span className="text-muted-foreground/50 text-xs font-normal">No price</span>}
                 </p>
                 <div className="flex gap-1">
-                  {card.condition && <Badge variant="outline" className="text-[10px] px-1 py-0">{card.condition}</Badge>}
                   {card.quantity > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0">×{card.quantity}</Badge>}
                 </div>
               </div>
+              <select
+                value={card.condition ?? ''}
+                onChange={async e => {
+                  const newVal = e.target.value || null
+                  await window.electronAPI?.updateCard(card.id, { condition: newVal })
+                  onRefresh()
+                }}
+                onClick={e => e.stopPropagation()}
+                className="w-full mt-1 text-[10px] px-1 py-0.5 rounded border border-border bg-background text-foreground"
+              >
+                <option value="">— Condition —</option>
+                <option value="NM">NM</option>
+                <option value="LP">LP</option>
+                <option value="MP">MP</option>
+                <option value="HP">HP</option>
+                <option value="DMG">DMG</option>
+              </select>
             </div>
 
             <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

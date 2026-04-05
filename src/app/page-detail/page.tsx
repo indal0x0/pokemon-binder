@@ -14,10 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal } from 'lucide-react'
+import { Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal, ZoomIn } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
+import { ImageLightbox } from '@/components/ImageLightbox'
 import { formatCurrency } from '@/lib/utils'
 
 const DIMENSION_PRESETS = [
@@ -55,6 +56,7 @@ function PageDetailInner() {
 
   // Card detail modal
   const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
   // Slide-in card search panel
   const [panelOpen, setPanelOpen] = useState(false)
@@ -182,9 +184,13 @@ function PageDetailInner() {
     if (!window.electronAPI || selectedCards.size === 0 || !page) return
     setAdding(true)
     const toAdd = searchResults.filter(c => selectedCards.has(c.tcgApiId))
+    const capacity = page.cols * page.rows
+    const freeSlots = Math.max(0, capacity - cards.length)
+    const fitsNow = toAdd.slice(0, freeSlots)
+    const overflow = toAdd.slice(freeSlots)
     let nextPos = cards.length
     try {
-      for (const card of toAdd) {
+      for (const card of fitsNow) {
         await window.electronAPI.createCard({
           binderId,
           pageId,
@@ -201,7 +207,44 @@ function PageDetailInner() {
           position: nextPos++,
         } as Parameters<typeof window.electronAPI.createCard>[0])
       }
-      toast.success(`Added ${toAdd.length} card${toAdd.length !== 1 ? 's' : ''}`)
+
+      if (overflow.length > 0) {
+        let batch = overflow
+        let pageCount = 0
+        while (batch.length > 0) {
+          const chunk = batch.slice(0, capacity)
+          batch = batch.slice(capacity)
+          pageCount++
+          const newPage = await window.electronAPI.createPage({
+            binderId,
+            name: `${page.name} (cont.)`,
+            cols: page.cols,
+            rows: page.rows,
+          })
+          for (let i = 0; i < chunk.length; i++) {
+            const card = chunk[i]
+            await window.electronAPI.createCard({
+              binderId,
+              pageId: newPage.id,
+              tcgApiId: card.tcgApiId,
+              name: card.name,
+              setId: card.setId,
+              setName: card.setName,
+              collectorNumber: card.collectorNumber,
+              rarity: card.rarity ?? undefined,
+              year: card.year ?? undefined,
+              imageUrl: card.imageUrl ?? undefined,
+              quantity: 1,
+              tradeList: 0,
+              position: i,
+            } as Parameters<typeof window.electronAPI.createCard>[0])
+          }
+        }
+        toast.success(`Added ${toAdd.length} card${toAdd.length !== 1 ? 's' : ''} — ${overflow.length} spilled onto ${pageCount} new page${pageCount !== 1 ? 's' : ''}`)
+      } else {
+        toast.success(`Added ${toAdd.length} card${toAdd.length !== 1 ? 's' : ''}`)
+      }
+
       setSelectedCards(new Set())
       setPanelOpen(false)
       setSearchQuery('')
@@ -483,13 +526,29 @@ function PageDetailInner() {
                         )}
                       </div>
                     </div>
-                    {/* Delete button */}
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteCard(card.id) }}
-                      className="absolute top-1 right-1 bg-background/80 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
-                    >
-                      <Trash2 className="h-2.5 w-2.5" />
-                    </button>
+                    {/* Hover action buttons */}
+                    <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      {card.imageUrl && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation()
+                            const src = card.imageUrl!.startsWith('uploads/')
+                              ? window.electronAPI?.getImageUrl(card.imageUrl!) ?? card.imageUrl!
+                              : card.imageUrl!
+                            setLightboxSrc(src)
+                          }}
+                          className="bg-background/80 rounded p-0.5 hover:bg-background"
+                        >
+                          <ZoomIn className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteCard(card.id) }}
+                        className="bg-background/80 rounded p-0.5 hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -507,6 +566,9 @@ function PageDetailInner() {
           setCards(prev => prev.map(c => c.id === updated.id ? updated : c))
         }}
       />
+
+      {/* Fullscreen image lightbox */}
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       {/* Slide-in card search panel */}
       {panelOpen && (

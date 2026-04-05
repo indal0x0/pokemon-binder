@@ -111,14 +111,15 @@ interface ElectronAPI {
   listBinders(): Promise<BinderRow[]>
   getBinder(id: string): Promise<(BinderRow & { pages: PageRow[]; cards: CardRow[] }) | null>
   createBinder(data: { name: string; description?: string; coverColor?: string | null; coverImagePath?: string | null; coverPattern?: string | null; coverPreset?: string | null }): Promise<BinderRow>
-  updateBinder(id: string, data: { name?: string; description?: string; coverColor?: string | null; coverImagePath?: string | null; coverPattern?: string | null; coverPreset?: string | null }): Promise<BinderRow>
+  updateBinder(id: string, data: { name?: string; description?: string | null; coverColor?: string | null; coverImagePath?: string | null; coverPattern?: string | null; coverPreset?: string | null }): Promise<BinderRow>
   uploadCover(binderId: string, file: File): Promise<string>
   deleteBinder(id: string): Promise<boolean>
 
   listPages(binderId: string): Promise<PageRow[]>
   getPage(pageId: string): Promise<(PageRow & { cards: CardRow[] }) | null>
   createPage(data: { binderId: string; name?: string; imagePath?: string; status?: string; cols?: number; rows?: number }): Promise<PageRow>
-  updatePage(pageId: string, data: { name?: string; position?: number; status?: string; rawAiOutput?: string; processedAt?: string; cols?: number; rows?: number }): Promise<PageRow>
+  updatePage(pageId: string, data: { name?: string; position?: number; status?: string; rawAiOutput?: string; processedAt?: string; cols?: number; rows?: number; imagePath?: string }): Promise<PageRow>
+  scrapeTcgplayerPrices(binderId: string): Promise<{ updated: number; skipped: number }>
   deletePage(pageId: string): Promise<boolean>
   reorderPages(binderId: string, orderedIds: string[]): Promise<boolean>
   reorderPageCards(pageId: string, positions: Array<{ id: string; position: number }>): Promise<boolean>

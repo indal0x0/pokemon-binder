@@ -5,6 +5,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { formatCurrency } from '@/lib/utils'
 import { Upload, ImageOff, Loader2 } from 'lucide-react'
 import type { CardRow, FullCardPricing } from '@/types/electron'
+import { ImageLightbox } from './ImageLightbox'
 
 interface Props {
   card: CardRow | null
@@ -25,6 +26,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
   const [dragOver, setDragOver] = useState(false)
   const [pricing, setPricing] = useState<FullCardPricing | null>(null)
   const [loadingPrices, setLoadingPrices] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
   const bestMarket = pricing?.bestMarket ?? card.priceMarket
 
   return (
+    <>
+    <ImageLightbox src={lightboxOpen ? imageUrl : null} alt={card.name} onClose={() => setLightboxOpen(false)} />
     <Dialog open={!!card} onOpenChange={open => { if (!open) onClose() }}>
       <DialogContent className="!w-[95vw] !max-w-[95vw] h-[88vh] p-0 overflow-hidden border-border/60 shadow-2xl bg-card flex flex-col">
 
@@ -70,7 +74,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
           <div className="flex-shrink-0 w-44">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-contain rounded-xl shadow-xl" />
+              <img src={imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-contain rounded-xl shadow-xl cursor-zoom-in" onClick={() => setLightboxOpen(true)} />
             ) : (
               <div
                 className={`w-full aspect-[2.5/3.5] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
@@ -103,7 +107,20 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                 {card.collectorNumber && <Tag>#{card.collectorNumber}</Tag>}
                 {card.year && <Tag>{card.year}</Tag>}
                 {card.rarity && <Tag>{card.rarity}</Tag>}
-                {card.condition && <Tag highlight>{card.condition}</Tag>}
+                <select
+                  value={card.condition ?? ''}
+                  onChange={async e => {
+                    const newVal = e.target.value || null
+                    await window.electronAPI?.updateCard(card.id, { condition: newVal })
+                    onCardUpdated({ ...card, condition: newVal })
+                  }}
+                  className="text-xs px-2 py-1 rounded-md border border-border bg-background text-foreground"
+                >
+                  <option value="">— Condition —</option>
+                  {CONDITIONS.map(c => (
+                    <option key={c.short} value={c.short}>{c.short} – {c.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -213,6 +230,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
 
       </DialogContent>
     </Dialog>
+    </>
   )
 }
 

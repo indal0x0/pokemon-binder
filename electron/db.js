@@ -183,7 +183,7 @@ function createPage({ binderId, name, imagePath, status, cols, rows }) {
   return db.prepare('SELECT * FROM pages WHERE id = ?').get(id)
 }
 
-function updatePage(id, { name, position, status, rawAiOutput, processedAt, cols, rows }) {
+function updatePage(id, { name, position, status, rawAiOutput, processedAt, cols, rows, imagePath }) {
   db.prepare(`
     UPDATE pages SET
       name         = COALESCE(?, name),
@@ -192,9 +192,10 @@ function updatePage(id, { name, position, status, rawAiOutput, processedAt, cols
       rawAiOutput  = COALESCE(?, rawAiOutput),
       processedAt  = COALESCE(?, processedAt),
       cols         = COALESCE(?, cols),
-      rows         = COALESCE(?, rows)
+      rows         = COALESCE(?, rows),
+      imagePath    = COALESCE(?, imagePath)
     WHERE id = ?
-  `).run(name ?? null, position ?? null, status ?? null, rawAiOutput ?? null, processedAt ?? null, cols ?? null, rows ?? null, id)
+  `).run(name ?? null, position ?? null, status ?? null, rawAiOutput ?? null, processedAt ?? null, cols ?? null, rows ?? null, imagePath ?? null, id)
   return db.prepare('SELECT * FROM pages WHERE id = ?').get(id)
 }
 

@@ -53,6 +53,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // TCG card browser search
   searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 
+  // Daily TCGPlayer price scrape (runs in background on binder open)
+  scrapeTcgplayerPrices: (binderId) => ipcRenderer.invoke('tcg:scrape-binder-prices', binderId),
+
   // Fetch full pricing breakdown for a card (variants + cardmarket)
   getCardPrices: (tcgApiId) => ipcRenderer.invoke('tcg:get-card-prices', tcgApiId),
 

@@ -318,6 +318,14 @@ ipcMain.handle('tcg:search', async (_, query, page = 1) => {
   return searchCards(query, page)
 })
 
+// ─── IPC: TCGPlayer daily price scrape ────────────────────────────────────────
+
+ipcMain.handle('tcg:scrape-binder-prices', async (_, binderId) => {
+  const { getCardsForRefresh } = require('./db')
+  const { scrapeBatchPrices } = require('./tcgplayer')
+  return scrapeBatchPrices(store, getCardsForRefresh(binderId))
+})
+
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {

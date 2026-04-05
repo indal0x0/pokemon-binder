@@ -13,6 +13,7 @@ import { BinderCover } from '@/components/BinderCover'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 import { PagesGallery } from '@/components/PagesGallery'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderRow, PageRow, CardRow } from '@/types/electron'
 
@@ -91,6 +92,13 @@ function BinderPageInner() {
   }, [binderId, router])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!binderId || !window.electronAPI) return
+    window.electronAPI.scrapeTcgplayerPrices(binderId)
+      .then(r => { if (r.updated > 0) toast.info(`Refreshed ${r.updated} TCGPlayer price${r.updated !== 1 ? 's' : ''}`) })
+      .catch(() => {})
+  }, [binderId])
 
   function openEditCover() {
     if (!binder) return
