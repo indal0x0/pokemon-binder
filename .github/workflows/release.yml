@@ -23,6 +23,9 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npm run electron:rebuild
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Build Next.js static export
         run: npx next build
 
