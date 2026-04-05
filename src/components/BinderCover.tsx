@@ -20,27 +20,47 @@ export const PATTERNS: { id: string; label: string; svg: string }[] = [
   {
     id: 'dots',
     label: 'Dots',
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='2.5' fill='rgba(255,255,255,0.22)'/></svg>`,
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='2.5' fill='rgba(255,255,255,0.40)'/></svg>`,
   },
   {
     id: 'grid',
     label: 'Grid',
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M 20 0 L 0 0 0 20' fill='none' stroke='rgba(255,255,255,0.18)' stroke-width='1'/></svg>`,
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M 20 0 L 0 0 0 20' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='1'/></svg>`,
   },
   {
     id: 'stripes',
     label: 'Stripes',
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><line x1='0' y1='12' x2='12' y2='0' stroke='rgba(255,255,255,0.2)' stroke-width='2'/></svg>`,
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><line x1='0' y1='12' x2='12' y2='0' stroke='rgba(255,255,255,0.38)' stroke-width='2'/></svg>`,
   },
   {
     id: 'scales',
     label: 'Scales',
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='0' cy='10' r='10' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='1'/><circle cx='20' cy='10' r='10' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='1'/><circle cx='10' cy='0' r='10' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='1'/><circle cx='10' cy='20' r='10' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='1'/></svg>`,
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='0' cy='10' r='10' fill='none' stroke='rgba(255,255,255,0.32)' stroke-width='1.5'/><circle cx='20' cy='10' r='10' fill='none' stroke='rgba(255,255,255,0.32)' stroke-width='1.5'/><circle cx='10' cy='0' r='10' fill='none' stroke='rgba(255,255,255,0.32)' stroke-width='1.5'/><circle cx='10' cy='20' r='10' fill='none' stroke='rgba(255,255,255,0.32)' stroke-width='1.5'/></svg>`,
   },
   {
     id: 'stars',
     label: 'Stars',
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30'><polygon points='15,3 17,11 25,11 19,16 21,24 15,19 9,24 11,16 5,11 13,11' fill='rgba(255,255,255,0.13)'/></svg>`,
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30'><polygon points='15,3 17,11 25,11 19,16 21,24 15,19 9,24 11,16 5,11 13,11' fill='rgba(255,255,255,0.30)'/></svg>`,
+  },
+  {
+    id: 'pokeball',
+    label: 'Poké Ball',
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='16' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='1.5'/><line x1='4' y1='20' x2='36' y2='20' stroke='rgba(255,255,255,0.35)' stroke-width='1.5'/><circle cx='20' cy='20' r='4' fill='none' stroke='rgba(255,255,255,0.50)' stroke-width='1.5'/></svg>`,
+  },
+  {
+    id: 'hex',
+    label: 'Hex',
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='24'><polygon points='14,2 24,7.5 24,16.5 14,22 4,16.5 4,7.5' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='1.2'/></svg>`,
+  },
+  {
+    id: 'zigzag',
+    label: 'Zigzag',
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='12'><polyline points='0,6 6,0 12,6 18,0 24,6' fill='none' stroke='rgba(255,255,255,0.38)' stroke-width='1.5'/><polyline points='0,12 6,6 12,12 18,6 24,12' fill='none' stroke='rgba(255,255,255,0.38)' stroke-width='1.5'/></svg>`,
+  },
+  {
+    id: 'diamonds',
+    label: 'Diamonds',
+    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><polygon points='12,2 22,12 12,22 2,12' fill='none' stroke='rgba(255,255,255,0.38)' stroke-width='1.2'/></svg>`,
   },
 ]
 

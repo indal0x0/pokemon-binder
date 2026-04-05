@@ -9,18 +9,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // ─── Electron-store ───────────────────────────────────────────────────────────
-const store = new Store({
-  schema: {
-    settings: {
-      type: 'object',
-      properties: {
-        geminiApiKey: { type: 'string', default: '' },
-        pokemonTcgApiKey: { type: 'string', default: '' },
-      },
-      default: {},
-    },
-  },
-})
+const store = new Store()
 
 const isDev = !app.isPackaged
 let mainWindow = null
@@ -320,65 +309,6 @@ ipcMain.handle('cards:upload-card-image', (_, cardId, binderId, filename, arrayB
   const relativePath = `uploads/${binderId}/cards/${cardId}${ext}`
   const { updateCard } = require('./db')
   return updateCard(cardId, { imageUrl: relativePath })
-})
-
-// ─── IPC: Scanning ────────────────────────────────────────────────────────────
-
-ipcMain.handle('scan:page', async (_, binderId, pageId, imagePath) => {
-  const { identifyCardsOnPage } = require('./scanner')
-  const { matchCard } = require('./tcg')
-  const { createCard, updatePage } = require('./db')
-
-  const settings = getSettings()
-  const geminiKey = settings.geminiApiKey || ''
-  const tcgApiKey = settings.pokemonTcgApiKey || ''
-
-  if (!geminiKey) throw new Error('Gemini API key not set. Go to Settings to add it.')
-
-  // Resolve absolute path from stored relative path
-  const absImagePath = imagePath.startsWith('uploads/')
-    ? getUserDataPath(imagePath)
-    : imagePath
-
-  const { cards: identified, rawText } = await identifyCardsOnPage(absImagePath, geminiKey)
-
-  // Update page with raw AI output
-  updatePage(pageId, {
-    rawAiOutput: rawText,
-    processedAt: new Date().toISOString(),
-    status: 'done',
-  })
-
-  const saved = []
-  for (const card of identified) {
-    let tcgData = null
-    try {
-      tcgData = await matchCard(card, tcgApiKey)
-    } catch { /* no TCG match */ }
-
-    const row = createCard({
-      binderId,
-      pageId,
-      tcgApiId: tcgData?.tcgApiId || `unmatched-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      name: tcgData?.name || card.name,
-      setId: tcgData?.setId || 'unknown',
-      setName: tcgData?.setName || card.setName || 'Unknown Set',
-      collectorNumber: tcgData?.collectorNumber || card.collectorNumber || '',
-      rarity: tcgData?.rarity || null,
-      imageUrl: tcgData?.imageUrl || null,
-      priceLow: tcgData?.priceLow ?? null,
-      priceMid: tcgData?.priceMid ?? null,
-      priceMarket: tcgData?.priceMarket ?? null,
-      priceHigh: tcgData?.priceHigh ?? null,
-      priceUpdatedAt: tcgData?.priceUpdatedAt ?? null,
-      quantity: card.quantity || 1,
-      condition: card.condition || null,
-      tradeList: false,
-    })
-    saved.push(row)
-  }
-
-  return { cards: saved, count: saved.length }
 })
 
 // ─── IPC: TCG card search ─────────────────────────────────────────────────────

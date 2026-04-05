@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Search, Plus, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import type { TcgCardResult, PageRow } from '@/types/electron'
+import type { TcgCardResult, PageRow, FullCardPricing } from '@/types/electron'
 
 export default function BrowsePage() {
   const params = typeof window !== 'undefined'
@@ -22,17 +22,37 @@ export default function BrowsePage() {
   const [searching, setSearching] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
+  const [cardPrices, setCardPrices] = useState<Record<string, FullCardPricing | null | undefined>>({})
+  const [filterHasPrice, setFilterHasPrice] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const search = useCallback(async (q: string) => {
     if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
       setResults([])
+      setCardPrices({})
       return
     }
+    // Clear any pending price fetches from previous search
+    priceTimeoutsRef.current.forEach(t => clearTimeout(t))
+    priceTimeoutsRef.current = []
+    setCardPrices({})
     setSearching(true)
     try {
       const { cards } = await window.electronAPI.searchTcg(q.trim())
       setResults(cards)
+      // Stagger price fetches 100ms apart
+      cards.forEach((card, i) => {
+        const t = setTimeout(async () => {
+          try {
+            const prices = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
+            setCardPrices(prev => ({ ...prev, [card.tcgApiId]: prices[card.tcgApiId] ?? null }))
+          } catch {
+            setCardPrices(prev => ({ ...prev, [card.tcgApiId]: null }))
+          }
+        }, i * 100)
+        priceTimeoutsRef.current.push(t)
+      })
     } catch {
       toast.error('Search failed')
     } finally {
@@ -116,6 +136,21 @@ export default function BrowsePage() {
         </div>
       )}
 
+      {results.length > 0 && (
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setFilterHasPrice(v => !v)}
+            className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+              filterHasPrice
+                ? 'bg-primary/10 border-primary/40 text-primary'
+                : 'border-border/50 text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Has price
+          </button>
+        </div>
+      )}
+
       {results.length === 0 && query.length >= 2 && !searching && (
         <p className="text-center py-16 text-sm text-muted-foreground">No cards found for &quot;{query}&quot;</p>
       )}
@@ -127,58 +162,73 @@ export default function BrowsePage() {
         </div>
       )}
 
-      {results.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {results.map(card => {
-            const added = addedIds.has(card.tcgApiId)
-            const adding = addingId === card.tcgApiId
-            return (
-              <div key={card.tcgApiId} className="relative bg-card border rounded-lg overflow-hidden">
-                {card.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover" />
-                ) : (
-                  <div className="w-full aspect-[2.5/3.5] bg-secondary flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground text-center px-2">{card.name}</span>
-                  </div>
-                )}
-                <div className="p-2">
-                  <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{card.setName}</p>
-                  {card.collectorNumber && (
-                    <p className="text-xs text-muted-foreground">#{card.collectorNumber}</p>
+      {results.length > 0 && (() => {
+        const displayed = filterHasPrice
+          ? results.filter(c => {
+              const p = cardPrices[c.tcgApiId]
+              return p !== undefined && p !== null && (p.bestMarket ?? 0) > 0
+            })
+          : results
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {displayed.map(card => {
+              const added = addedIds.has(card.tcgApiId)
+              const adding = addingId === card.tcgApiId
+              const fetchedPricing = cardPrices[card.tcgApiId]
+              const priceLoading = fetchedPricing === undefined
+              const displayPrice = fetchedPricing?.bestMarket ?? card.priceMarket
+              return (
+                <div key={card.tcgApiId} className="relative bg-card border rounded-lg overflow-hidden">
+                  {card.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover" />
+                  ) : (
+                    <div className="w-full aspect-[2.5/3.5] bg-secondary flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground text-center px-2">{card.name}</span>
+                    </div>
                   )}
-                  <div className="flex items-center justify-between mt-1.5 gap-1">
-                    <p className="text-sm font-semibold text-primary">
-                      {card.priceMarket ? formatCurrency(card.priceMarket) : '—'}
-                    </p>
-                    {card.rarity && (
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 truncate max-w-16">{card.rarity}</Badge>
+                  <div className="p-2">
+                    <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{card.setName}</p>
+                    {card.collectorNumber && (
+                      <p className="text-xs text-muted-foreground">#{card.collectorNumber}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-1.5 gap-1">
+                      {priceLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/40" />
+                      ) : (
+                        <p className="text-sm font-semibold text-primary">
+                          {displayPrice ? formatCurrency(displayPrice) : '—'}
+                        </p>
+                      )}
+                      {card.rarity && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 truncate max-w-16">{card.rarity}</Badge>
+                      )}
+                    </div>
+                    {binderId && (
+                      <Button
+                        size="sm"
+                        variant={added ? 'secondary' : 'outline'}
+                        className="w-full mt-2 h-7 text-xs"
+                        onClick={() => !added && addCard(card)}
+                        disabled={adding || added}
+                      >
+                        {adding ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : added ? (
+                          <><Check className="h-3 w-3 mr-1" /> Added</>
+                        ) : (
+                          <><Plus className="h-3 w-3 mr-1" /> Add to Binder</>
+                        )}
+                      </Button>
                     )}
                   </div>
-                  {binderId && (
-                    <Button
-                      size="sm"
-                      variant={added ? 'secondary' : 'outline'}
-                      className="w-full mt-2 h-7 text-xs"
-                      onClick={() => !added && addCard(card)}
-                      disabled={adding || added}
-                    >
-                      {adding ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : added ? (
-                        <><Check className="h-3 w-3 mr-1" /> Added</>
-                      ) : (
-                        <><Plus className="h-3 w-3 mr-1" /> Add to Binder</>
-                      )}
-                    </Button>
-                  )}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )
+      })()}
     </main>
   )
 }

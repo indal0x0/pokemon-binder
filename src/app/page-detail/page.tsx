@@ -1,7 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal } from 'lucide-react'
+import { Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
@@ -40,18 +42,14 @@ interface PageData {
   cards: CardRow[]
 }
 
-export default function PageDetailPage() {
+function PageDetailInner() {
   const router = useRouter()
-
-  const [pageId, setPageId] = useState('')
-  const [binderId, setBinderId] = useState('')
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setPageId(params.get('id') ?? '')
-    setBinderId(params.get('binderId') ?? '')
-  }, [])
+  const searchParams = useSearchParams()
+  const pageId = searchParams.get('id') ?? ''
+  const binderId = searchParams.get('binderId') ?? ''
 
   const [page, setPage] = useState<PageData | null>(null)
+  const [binderName, setBinderName] = useState('')
   const [cards, setCards] = useState<CardRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -101,6 +99,13 @@ export default function PageDetailPage() {
       setPage(data as PageData)
       setCards(data.cards ?? [])
       setLoading(false)
+      // Fetch binder name for breadcrumb
+      const bid = data.binderId
+      if (bid) {
+        window.electronAPI.getBinder(bid)
+          .then(b => { if (b) setBinderName(b.name) })
+          .catch(() => {})
+      }
     } catch {
       setLoading(false)
     }
@@ -324,7 +329,10 @@ export default function PageDetailPage() {
 
   const displayedResults = (() => {
     let results = [...searchResults]
-    if (filterUnpriced) results = results.filter(c => c.priceMarket && c.priceMarket > 0)
+    if (filterUnpriced) results = results.filter(c => {
+      const market = searchPrices[c.tcgApiId]?.bestMarket ?? c.priceMarket
+      return market && market > 0
+    })
     if (filterNoImage) results = results.filter(c => !!c.imageUrl)
     switch (sortMode) {
       case 'newest': results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
@@ -364,13 +372,19 @@ export default function PageDetailPage() {
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <div className="border-b bg-background z-10 flex-shrink-0">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
-          <button
-            onClick={() => router.push(`/binder?id=${page.binderId}`)}
-            className="text-muted-foreground hover:text-foreground"
+        <div className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Link href="/" className="hover:text-foreground transition-colors">Binders</Link>
+          <span className="opacity-40">›</span>
+          <Link
+            href={`/binder?id=${page?.binderId || binderId}`}
+            className="hover:text-foreground transition-colors truncate max-w-32"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+            {binderName || '…'}
+          </Link>
+          <span className="opacity-40">›</span>
+          <span className="text-foreground/70 truncate">{page.name}</span>
+        </div>
+        <div className="max-w-6xl mx-auto px-6 pb-2 flex items-center gap-3">
           <h1 className="font-semibold flex-1 truncate">{page.name}</h1>
           <button
             onClick={openEditDims}
@@ -611,10 +625,10 @@ export default function PageDetailPage() {
                       <img
                         src={card.imageUrl}
                         alt={card.name}
-                        className="w-14 h-20 object-cover rounded-md flex-shrink-0 shadow-sm"
+                        className="w-20 h-28 object-cover rounded-md flex-shrink-0 shadow-sm"
                       />
                     ) : (
-                      <div className="w-14 h-20 bg-secondary rounded-md flex-shrink-0 flex items-center justify-center shadow-sm">
+                      <div className="w-20 h-28 bg-secondary rounded-md flex-shrink-0 flex items-center justify-center shadow-sm">
                         <span className="text-[9px] text-muted-foreground text-center px-1 leading-tight">{card.name}</span>
                       </div>
                     )}
@@ -742,5 +756,13 @@ export default function PageDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function PageDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading...</div>}>
+      <PageDetailInner />
+    </Suspense>
   )
 }

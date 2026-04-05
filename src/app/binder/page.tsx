@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X } from 'lucide-react'
 import { BinderCardGrid } from '@/components/BinderCardGrid'
 import { BinderActions } from '@/components/BinderActions'
 import { BinderCover } from '@/components/BinderCover'
@@ -18,8 +18,10 @@ import type { BinderRow, PageRow, CardRow } from '@/types/electron'
 
 type FullBinder = BinderRow & { pages: PageRow[]; cards: CardRow[] }
 
-export default function BinderPage() {
+function BinderPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const binderId = searchParams.get('id') ?? ''
   const [binder, setBinder] = useState<FullBinder | null>(null)
   const [loading, setLoading] = useState(true)
   const [coverOpen, setCoverOpen] = useState(false)
@@ -52,10 +54,6 @@ export default function BinderPage() {
   function cancelEditName() {
     setEditingName(false)
   }
-
-  const binderId = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('id') ?? ''
-    : ''
 
   const load = useCallback(async () => {
     if (!binderId || !window.electronAPI) { setLoading(false); return }
@@ -110,10 +108,14 @@ export default function BinderPage() {
 
   return (
     <main className="min-h-screen p-6 max-w-5xl mx-auto">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
+        <Link href="/" className="hover:text-foreground transition-colors">Binders</Link>
+        <span className="opacity-40">›</span>
+        <span className="text-foreground/70 truncate max-w-48">{binder.name}</span>
+      </div>
+
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div className="relative group flex-shrink-0 cursor-pointer" onClick={openEditCover}>
           <BinderCover binder={binder} className="w-10 h-14 rounded" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
@@ -189,5 +191,13 @@ export default function BinderPage() {
         </DialogContent>
       </Dialog>
     </main>
+  )
+}
+
+export default function BinderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading...</div>}>
+      <BinderPageInner />
+    </Suspense>
   )
 }

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BinderCover } from '@/components/BinderCover'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, BookOpen, ChevronRight, Settings } from 'lucide-react'
+import { Plus, BookOpen, Settings } from 'lucide-react'
 import type { BinderRow } from '@/types/electron'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
@@ -23,11 +23,18 @@ export default function HomePage() {
   }, [])
 
   return (
-    <main className="min-h-screen p-6 max-w-4xl mx-auto">
+    <main className="min-h-screen p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pokemon Binder</h1>
-          <p className="text-muted-foreground text-sm mt-1">Track and value your collection</p>
+          <h1 className="text-2xl font-bold tracking-tight shimmer-text">Pokemon Binder</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Track and value your collection
+            {binders.length > 0 && (
+              <span className="ml-2 text-primary font-semibold">
+                · {formatCurrency(binders.reduce((s, b) => s + (b.totalValue ?? 0), 0))} total
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-1">
           <ThemeSwitcher />
@@ -53,27 +60,23 @@ export default function HomePage() {
           <p className="text-sm">No binders yet. Create one to start tracking your cards.</p>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {binders.map(binder => (
-            <Link key={binder.id} href={`/binder?id=${binder.id}`}>
-              <div className="flex items-center gap-4 rounded-xl border border-border/50 bg-card hover:bg-secondary/40 hover:border-border hover:shadow-md hover:shadow-black/20 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer px-4 py-3">
-                <BinderCover binder={binder} className="w-10 h-14 rounded flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{binder.name}</p>
-                  {binder.description && (
-                    <p className="text-muted-foreground text-xs mt-0.5 truncate">{binder.description}</p>
-                  )}
-                  <div className="flex gap-2 mt-1.5">
-                    <Badge variant="secondary" className="text-xs">{binder.cardCount ?? 0} cards</Badge>
-                    <Badge variant="secondary" className="text-xs">{binder.pageCount ?? 0} pages</Badge>
-                  </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+          {binders.map((binder, i) => (
+            <Link key={binder.id} href={`/binder?id=${binder.id}`}
+              className="animate-fade-slide-up"
+              style={{ animationDelay: `${i * 55}ms` }}>
+              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer overflow-hidden">
+                <div className="relative w-full aspect-[3/4]">
+                  <BinderCover binder={binder} className="w-full h-full" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="text-right">
-                    <p className="text-lg font-semibold">{formatCurrency(binder.totalValue ?? 0)}</p>
-                    <p className="text-xs text-muted-foreground">market value</p>
+                <div className="p-3">
+                  <p className="font-semibold text-sm truncate">{binder.name}</p>
+                  <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{binder.cardCount ?? 0} cards</Badge>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{binder.pageCount ?? 0} pages</Badge>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-primary font-semibold text-sm mt-2">{formatCurrency(binder.totalValue ?? 0)}</p>
                 </div>
               </div>
             </Link>

@@ -1,6 +1,5 @@
 export interface ElectronSettings {
-  geminiApiKey?: string
-  pokemonTcgApiKey?: string
+  // reserved for future settings
 }
 
 export interface BinderRow {
@@ -135,7 +134,6 @@ interface ElectronAPI {
   refreshPrices(binderId: string): Promise<{ updated: number }>
 
   uploadImage(binderId: string, file: File): Promise<string>
-  scanPage(binderId: string, pageId: string, imagePath: string): Promise<{ cards: CardRow[]; count: number }>
   searchTcg(query: string, page?: number): Promise<TcgSearchResult>
   getImageUrl(imagePath: string | null): string | null
 }

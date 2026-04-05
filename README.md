@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pokemon Binder
 
-## Getting Started
+A Windows desktop app for tracking and valuing your Pokemon card collection. Organize cards into binders and pages, browse the full TCG card catalog, and get live market prices — all stored locally on your computer.
 
-First, run the development server:
+No account, no API key, no web server needed.
+
+---
+
+## Download & Install
+
+1. Go to the [Releases](https://github.com/indal0x0/pokemon-binder/releases) page
+2. Download the latest `Pokemon-Binder-Setup-x.x.x.exe`
+3. Run the installer — it creates a Desktop shortcut and Start Menu entry
+4. Launch **Pokemon Binder** and start adding cards
+
+> Your collection data is saved to `%AppData%\Pokemon Binder` and stays on your computer.
+
+---
+
+## Features
+
+- **Binders** — Create multiple binders, each with a custom cover (color, pattern, or your own image)
+- **Pages** — Organize cards into pages with configurable grid layouts
+- **Card browser** — Search the full Pokemon TCG catalog (powered by TCGDex)
+- **Live prices** — Fetch current market prices on demand from pokemontcg.io (requires internet)
+- **Card detail** — View all price variants (holofoil, normal, reverse holo, etc.) and Cardmarket data
+- **Themes** — 20+ color themes including animated backgrounds
+- **Fully offline** — The app runs entirely on your machine; only price fetching needs internet
+
+---
+
+## Build from Source
+
+**Prerequisites:** [Node.js 20+](https://nodejs.org) and [Git](https://git-scm.com)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Clone the repo
+git clone https://github.com/indal0x0/pokemon-binder.git
+cd pokemon-binder
+
+# 2. Install dependencies
+npm install
+
+# 3. Rebuild native modules for Electron
+npm run electron:rebuild
+
+# 4. Build the Windows installer
+npm run electron:build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The installer will be output to `dist/Pokemon Binder Setup x.x.x.exe`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Dev mode** (hot-reload UI + live Electron window):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run electron:dev
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Data & Privacy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- All data is stored locally in `%AppData%\Pokemon Binder`
+- No data is sent to any server (except outbound price requests to pokemontcg.io and TCGDex)
+- Uninstalling via the Control Panel does **not** delete your collection data — remove the folder manually if desired
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Electron](https://electronjs.org) — desktop shell
+- [Next.js](https://nextjs.org) 16 + React 19 — UI (compiled to static export)
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) — local database
+- [TCGDex API](https://tcgdex.dev) — card search
+- [pokemontcg.io](https://pokemontcg.io) — card pricing
+- [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com)

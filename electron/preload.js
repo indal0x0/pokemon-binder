@@ -50,10 +50,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('binders:upload-cover', binderId, file.name, arrayBuffer)
   },
 
-  // Card scanning (Gemini + TCG match)
-  scanPage: (binderId, pageId, imagePath) =>
-    ipcRenderer.invoke('scan:page', binderId, pageId, imagePath),
-
   // TCG card browser search
   searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 

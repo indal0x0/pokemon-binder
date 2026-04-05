@@ -152,7 +152,7 @@ export function PagesGallery({
             {pages.map((page, index) => {
               const imageUrl = window.electronAPI?.getImageUrl(page.imagePath || null)
               return (
-                <div key={page.id} className="relative group rounded-lg border bg-card overflow-hidden">
+                <div key={page.id} className="relative group rounded-lg border bg-card overflow-hidden hover:scale-[1.03] hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                   <Link href={`/page-detail?id=${page.id}&binderId=${binderId}`}>
                     {page.firstCardImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -161,9 +161,20 @@ export function PagesGallery({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={imageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
                     ) : (
-                      <div className="w-full aspect-[3/4] bg-secondary flex flex-col items-center justify-center gap-1">
-                        <span className="text-sm font-semibold text-muted-foreground">{page.pageNumber}</span>
-                        <span className="text-xs text-muted-foreground/60">{page.cols ?? 3}×{page.rows ?? 3}</span>
+                      <div className="w-full aspect-[3/4] relative overflow-hidden bg-card"
+                        style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 18%, transparent), var(--color-card))' }}>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                          <span className="text-5xl font-bold leading-none"
+                            style={{ fontFamily: 'var(--font-pixel)', color: 'var(--color-primary)', opacity: 0.75 }}>
+                            {page.pageNumber}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground bg-background/50 rounded-full px-2.5 py-0.5 mt-1">
+                            {page.cardCount ?? 0} cards
+                          </span>
+                          <span className="text-[9px] text-muted-foreground/40">{page.cols ?? 3}×{page.rows ?? 3}</span>
+                        </div>
+                        <div className="absolute top-0 right-0 w-10 h-10 rounded-bl-full" style={{ background: 'color-mix(in oklch, var(--color-primary) 12%, transparent)' }} />
+                        <div className="absolute bottom-0 left-0 w-7 h-7 rounded-tr-full" style={{ background: 'color-mix(in oklch, var(--color-primary) 10%, transparent)' }} />
                       </div>
                     )}
                   </Link>

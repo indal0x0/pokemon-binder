@@ -46,7 +46,74 @@ function extractPricing(card) {
   }
 }
 
+const POKEMONTCG_BASE = 'https://api.pokemontcg.io/v2'
+
+async function getPokemonTcgPricing(tcgApiId) {
+  try {
+    const res = await fetch(`${POKEMONTCG_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
+    if (!res.ok) return null
+    const json = await res.json()
+    const card = json.data
+    if (!card) return null
+    const tcgPrices = card?.tcgplayer?.prices ?? null
+    const cmPrices = card?.cardmarket?.prices ?? null
+
+    const variantMap = {
+      normal: 'Normal',
+      holofoil: 'Holofoil',
+      reverseHolofoil: 'Reverse Holo',
+      '1stEditionHolofoil': '1st Ed. Holofoil',
+      '1stEditionNormal': '1st Ed. Normal',
+      unlimitedHolofoil: 'Unlimited Holofoil',
+    }
+    const variants = []
+    for (const [key, label] of Object.entries(variantMap)) {
+      if (tcgPrices?.[key]) {
+        const p = tcgPrices[key]
+        variants.push({ label, low: p.low ?? null, mid: p.mid ?? null, market: p.market ?? null, high: p.high ?? null })
+      }
+    }
+    const bestMarket = variants.find(v => v.market)?.market ?? null
+    if (!variants.length && !bestMarket && !cmPrices) return null
+    return {
+      variants,
+      bestMarket,
+      cardmarket: cmPrices ? {
+        avg: cmPrices.averageSellPrice ?? null,
+        low: cmPrices.lowPrice ?? null,
+        trend: cmPrices.trendPrice ?? null,
+        avg7: cmPrices.avg7 ?? null,
+        avg30: cmPrices.avg30 ?? null,
+      } : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 async function fetchCardPrices(tcgApiId) {
+  // Try pokemontcg.io first
+  try {
+    const res = await fetch(`${POKEMONTCG_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
+    if (res.ok) {
+      const json = await res.json()
+      const card = json.data
+      const tcgPrices = card?.tcgplayer?.prices ?? null
+      if (tcgPrices) {
+        const variant = tcgPrices.holofoil || tcgPrices.normal || tcgPrices.reverseHolofoil || Object.values(tcgPrices).find(v => v && typeof v === 'object')
+        if (variant) {
+          return {
+            priceLow: variant.low ?? null,
+            priceMid: variant.mid ?? null,
+            priceMarket: variant.market ?? null,
+            priceHigh: variant.high ?? null,
+            priceUpdatedAt: new Date().toISOString(),
+          }
+        }
+      }
+    }
+  } catch { /* fall through */ }
+  // Fall back to TCGDex
   try {
     const response = await fetch(`${TCGDEX_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
     if (!response.ok) return null
@@ -58,43 +125,34 @@ async function fetchCardPrices(tcgApiId) {
 }
 
 async function getFullCardPricing(tcgApiId) {
+  // Try pokemontcg.io first
+  const ptcg = await getPokemonTcgPricing(tcgApiId)
+  if (ptcg) return ptcg
+
+  // Fall back to TCGDex
   try {
     const response = await fetch(`${TCGDEX_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
     if (!response.ok) return null
     const card = await response.json()
     const tcgplayer = card.pricing?.tcgplayer ?? null
     const cardmarket = card.pricing?.cardmarket ?? null
-
-    // Build variants array from all available tcgplayer keys
     const variants = []
     if (tcgplayer) {
       const variantLabels = { normal: 'Normal', reverseHolo: 'Reverse Holo', holofoil: 'Holofoil', firstEdition: '1st Edition', unlimited: 'Unlimited' }
       for (const [key, label] of Object.entries(variantLabels)) {
         if (tcgplayer[key] && typeof tcgplayer[key] === 'object') {
           const p = tcgplayer[key]
-          variants.push({
-            label,
-            low: p.lowPrice ?? null,
-            mid: p.midPrice ?? null,
-            market: p.marketPrice ?? null,
-            high: p.highPrice ?? null,
-          })
+          variants.push({ label, low: p.lowPrice ?? null, mid: p.midPrice ?? null, market: p.marketPrice ?? null, high: p.highPrice ?? null })
         }
       }
     }
-
-    // Best market price for condition estimates
     const bestMarket = variants.find(v => v.market)?.market ?? null
-
     return {
       variants,
       bestMarket,
       cardmarket: cardmarket ? {
-        avg: cardmarket.avg ?? null,
-        low: cardmarket.low ?? null,
-        trend: cardmarket.trend ?? null,
-        avg7: cardmarket.avg7 ?? null,
-        avg30: cardmarket.avg30 ?? null,
+        avg: cardmarket.avg ?? null, low: cardmarket.low ?? null,
+        trend: cardmarket.trend ?? null, avg7: cardmarket.avg7 ?? null, avg30: cardmarket.avg30 ?? null,
       } : null,
     }
   } catch {
@@ -118,8 +176,12 @@ async function searchCards(query, page = 1) {
     return { cards: [], hasMore: false }
   }
 
-  // Filter out TCG Pocket cards (set IDs start with "tcgp")
-  rawCards = rawCards.filter(card => !String(card.id || '').startsWith('tcgp'))
+  // Filter out TCG Pocket cards (card IDs and set IDs start with "tcgp")
+  rawCards = rawCards.filter(card => {
+    const id = String(card.id || '')
+    const setId = extractSetId(id)
+    return !id.startsWith('tcgp') && !setId.startsWith('tcgp')
+  })
 
   // Fetch set info for all unique setIds in parallel
   const uniqueSetIds = [...new Set(rawCards.map(c => extractSetId(c.id)))]
@@ -160,13 +222,8 @@ async function getCardPricesBatch(tcgApiIds) {
   return map
 }
 
-// Stub — AI scanning is disabled (Coming Soon)
-async function matchCard() {
-  return null
-}
-
 async function refreshCardPrices(tcgApiId) {
   return fetchCardPrices(tcgApiId)
 }
 
-module.exports = { matchCard, searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch }
+module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch }
