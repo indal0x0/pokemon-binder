@@ -337,8 +337,16 @@ function PageDetailInner() {
     switch (sortMode) {
       case 'newest': results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
       case 'oldest': results.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
-      case 'price-high': results.sort((a, b) => (b.priceMarket ?? -1) - (a.priceMarket ?? -1)); break
-      case 'price-low': results.sort((a, b) => (a.priceMarket ?? 99999) - (b.priceMarket ?? 99999)); break
+      case 'price-high':
+        results.sort((a, b) =>
+          (searchPrices[b.tcgApiId]?.bestMarket ?? b.priceMarket ?? -1) -
+          (searchPrices[a.tcgApiId]?.bestMarket ?? a.priceMarket ?? -1))
+        break
+      case 'price-low':
+        results.sort((a, b) =>
+          (searchPrices[a.tcgApiId]?.bestMarket ?? a.priceMarket ?? 99999) -
+          (searchPrices[b.tcgApiId]?.bestMarket ?? b.priceMarket ?? 99999))
+        break
     }
     return results
   })()

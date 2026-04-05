@@ -5,6 +5,13 @@
 
 const TCGDEX_BASE = 'https://api.tcgdex.net/v2/en'
 
+// ─── TCG Pocket blocklist ─────────────────────────────────────────────────────
+const POCKET_SET_IDS = new Set(['A1', 'A1a', 'A2', 'A2a', 'A2b', 'A3', 'A3a', 'A3b', 'P-A', 'PA'])
+function isPocketCard(id) {
+  const setId = extractSetId(id)
+  return id.startsWith('tcgp') || setId.startsWith('tcgp') || POCKET_SET_IDS.has(setId)
+}
+
 // In-process cache for set info (name + year) to avoid redundant fetches
 const setCache = new Map()
 
@@ -49,6 +56,7 @@ function extractPricing(card) {
 const POKEMONTCG_BASE = 'https://api.pokemontcg.io/v2'
 
 async function getPokemonTcgPricing(tcgApiId) {
+  if (isPocketCard(tcgApiId)) return null
   try {
     const res = await fetch(`${POKEMONTCG_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
     if (!res.ok) return null
@@ -92,6 +100,7 @@ async function getPokemonTcgPricing(tcgApiId) {
 }
 
 async function fetchCardPrices(tcgApiId) {
+  if (isPocketCard(tcgApiId)) return null
   // Try pokemontcg.io first
   try {
     const res = await fetch(`${POKEMONTCG_BASE}/cards/${encodeURIComponent(tcgApiId)}`)
@@ -177,11 +186,7 @@ async function searchCards(query, page = 1) {
   }
 
   // Filter out TCG Pocket cards (card IDs and set IDs start with "tcgp")
-  rawCards = rawCards.filter(card => {
-    const id = String(card.id || '')
-    const setId = extractSetId(id)
-    return !id.startsWith('tcgp') && !setId.startsWith('tcgp')
-  })
+  rawCards = rawCards.filter(card => !isPocketCard(String(card.id || '')))
 
   // Fetch set info for all unique setIds in parallel
   const uniqueSetIds = [...new Set(rawCards.map(c => extractSetId(c.id)))]

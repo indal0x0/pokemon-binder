@@ -33,6 +33,31 @@ function BinderPageInner() {
   const [nameValue, setNameValue] = useState('')
   const nameInputRef = useRef<HTMLInputElement>(null)
 
+  // Inline description editing
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descValue, setDescValue] = useState('')
+  const descInputRef = useRef<HTMLInputElement>(null)
+
+  function startEditDesc() {
+    if (!binder) return
+    setDescValue(binder.description ?? '')
+    setEditingDesc(true)
+    setTimeout(() => descInputRef.current?.select(), 0)
+  }
+
+  async function saveEditDesc() {
+    if (!binder || !window.electronAPI) return
+    const trimmed = descValue.trim()
+    if (trimmed === (binder.description ?? '')) { setEditingDesc(false); return }
+    try {
+      await window.electronAPI.updateBinder(binder.id, { description: trimmed || null })
+      setBinder(prev => prev ? { ...prev, description: trimmed || null } : null)
+    } catch { /* keep existing */ }
+    setEditingDesc(false)
+  }
+
+  function cancelEditDesc() { setEditingDesc(false) }
+
   function startEditName() {
     if (!binder) return
     setNameValue(binder.name)
@@ -143,7 +168,28 @@ function BinderPageInner() {
               <Pencil className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
             </div>
           )}
-          {binder.description && <p className="text-sm text-muted-foreground">{binder.description}</p>}
+          {editingDesc ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={descInputRef}
+                value={descValue}
+                onChange={e => setDescValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEditDesc(); if (e.key === 'Escape') cancelEditDesc() }}
+                onBlur={saveEditDesc}
+                className="text-sm text-muted-foreground bg-transparent border-b border-primary outline-none w-full min-w-0"
+                placeholder="Add a description..."
+              />
+              <button onClick={saveEditDesc} className="text-primary flex-shrink-0"><Check className="h-3.5 w-3.5" /></button>
+              <button onClick={cancelEditDesc} className="text-muted-foreground flex-shrink-0"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 group cursor-pointer" onClick={startEditDesc}>
+              <p className="text-sm text-muted-foreground">
+                {binder.description || <span className="italic opacity-40">Add description...</span>}
+              </p>
+              <Pencil className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </div>
+          )}
         </div>
         <ThemeSwitcher />
         <BinderActions binderId={binder.id} onRefresh={load} />
