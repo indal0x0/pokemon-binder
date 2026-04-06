@@ -455,27 +455,6 @@ html[data-theme="chrome"] {
   --ring: oklch(0.78 0.05 220);
 }
 
-/* ─── Theme: Blush (Fairy type — bubblegum pink) ────────────────────────── */
-html[data-theme="blush"] {
-  --background: oklch(0.14 0.04 355);
-  --foreground: oklch(0.97 0.005 355);
-  --card: oklch(0.18 0.04 355);
-  --card-foreground: oklch(0.97 0.005 355);
-  --popover: oklch(0.14 0.04 355);
-  --popover-foreground: oklch(0.97 0.005 355);
-  --primary: oklch(0.72 0.22 355);
-  --primary-foreground: oklch(0.14 0.04 355);
-  --secondary: oklch(0.22 0.03 355);
-  --secondary-foreground: oklch(0.97 0.005 355);
-  --muted: oklch(0.22 0.03 355);
-  --muted-foreground: oklch(0.60 0.01 355);
-  --accent: oklch(0.76 0.18 320);
-  --accent-foreground: oklch(0.14 0.04 355);
-  --border: oklch(0.28 0.035 355);
-  --input: oklch(0.28 0.035 355);
-  --ring: oklch(0.72 0.22 355);
-}
-
 /* ─── Theme: Toxin (Poison type — neon purple) ───────────────────────────── */
 html[data-theme="toxin"] {
   --background: oklch(0.13 0.04 305);
@@ -497,27 +476,6 @@ html[data-theme="toxin"] {
   --ring: oklch(0.65 0.28 305);
 }
 
-/* ─── Theme: Brawler (Fighting type — orange-red) ───────────────────────── */
-html[data-theme="brawler"] {
-  --background: oklch(0.14 0.04 35);
-  --foreground: oklch(0.97 0.005 40);
-  --card: oklch(0.18 0.04 35);
-  --card-foreground: oklch(0.97 0.005 40);
-  --popover: oklch(0.14 0.04 35);
-  --popover-foreground: oklch(0.97 0.005 40);
-  --primary: oklch(0.68 0.24 42);
-  --primary-foreground: oklch(0.14 0.04 35);
-  --secondary: oklch(0.22 0.03 35);
-  --secondary-foreground: oklch(0.97 0.005 40);
-  --muted: oklch(0.22 0.03 35);
-  --muted-foreground: oklch(0.60 0.01 40);
-  --accent: oklch(0.75 0.20 60);
-  --accent-foreground: oklch(0.14 0.04 35);
-  --border: oklch(0.28 0.035 35);
-  --input: oklch(0.28 0.035 35);
-  --ring: oklch(0.68 0.24 42);
-}
-
 /* ─── Theme: Terra (Ground type — earthy gold) ──────────────────────────── */
 html[data-theme="terra"] {
   --background: oklch(0.14 0.03 65);
@@ -537,27 +495,6 @@ html[data-theme="terra"] {
   --border: oklch(0.28 0.025 65);
   --input: oklch(0.28 0.025 65);
   --ring: oklch(0.72 0.18 70);
-}
-
-/* ─── Theme: Tempest (Flying/Dragon — bright sky-blue) ──────────────────── */
-html[data-theme="tempest"] {
-  --background: oklch(0.12 0.035 215);
-  --foreground: oklch(0.97 0.005 215);
-  --card: oklch(0.16 0.035 215);
-  --card-foreground: oklch(0.97 0.005 215);
-  --popover: oklch(0.12 0.035 215);
-  --popover-foreground: oklch(0.97 0.005 215);
-  --primary: oklch(0.75 0.22 215);
-  --primary-foreground: oklch(0.12 0.035 215);
-  --secondary: oklch(0.20 0.025 215);
-  --secondary-foreground: oklch(0.97 0.005 215);
-  --muted: oklch(0.20 0.025 215);
-  --muted-foreground: oklch(0.58 0.01 215);
-  --accent: oklch(0.65 0.18 235);
-  --accent-foreground: oklch(0.97 0.005 215);
-  --border: oklch(0.26 0.03 215);
-  --input: oklch(0.26 0.03 215);
-  --ring: oklch(0.75 0.22 215);
 }
 
 /* ─── Theme: Synthwave (Retro neon — hot pink + electric blue) ──────────── */
@@ -642,27 +579,6 @@ html[data-theme="aurora"] {
   --border: oklch(0.26 0.025 165);
   --input: oklch(0.26 0.025 165);
   --ring: oklch(0.75 0.22 160);
-}
-
-/* ─── Theme: Pokemon PC (Gen 4/5 DPPt DS PC aesthetic) ─────────────────── */
-html[data-theme="pokepc"] {
-  --background: oklch(0.14 0.06 245);
-  --foreground: oklch(0.94 0.02 240);
-  --card: oklch(0.19 0.07 245);
-  --card-foreground: oklch(0.94 0.02 240);
-  --popover: oklch(0.17 0.07 245);
-  --popover-foreground: oklch(0.94 0.02 240);
-  --primary: oklch(0.52 0.22 240);
-  --primary-foreground: oklch(0.97 0.01 240);
-  --secondary: oklch(0.23 0.07 245);
-  --secondary-foreground: oklch(0.85 0.04 240);
-  --muted: oklch(0.22 0.05 245);
-  --muted-foreground: oklch(0.60 0.06 240);
-  --accent: oklch(0.72 0.20 62);
-  --accent-foreground: oklch(0.15 0.04 60);
-  --border: oklch(0.30 0.08 245);
-  --input: oklch(0.30 0.08 245);
-  --ring: oklch(0.52 0.22 240);
 }
 
 @keyframes fadeSlideUp {

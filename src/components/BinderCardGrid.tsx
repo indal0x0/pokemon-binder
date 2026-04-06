@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, ArrowLeftRight, EyeOff } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
@@ -23,22 +23,26 @@ export function BinderCardGrid({
   const [livePrices, setLivePrices] = useState<Record<string, FullCardPricing | null>>({})
   const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
 
+  // Display-level Pocket card filter (belt-and-suspenders safety net)
+  const POCKET_SET_IDS = useMemo(() => new Set(['A1', 'A1a', 'A2', 'A2a', 'A2b', 'A3', 'A3a', 'A3b', 'P-A', 'PA']), [])
+  const nonPocketCards = useMemo(() =>
+    cards.filter(c => !c.tcgApiId.startsWith('tcgp') && !POCKET_SET_IDS.has(c.setId)),
+    [cards, POCKET_SET_IDS]
+  )
+
   useEffect(() => {
-    const unpriced = cards.filter(c => c.priceMarket == null && !c.tcgApiId.startsWith('unmatched-'))
+    const unpriced = nonPocketCards.filter(c => c.priceMarket == null && !c.tcgApiId.startsWith('unmatched-'))
     if (!unpriced.length || !window.electronAPI) return
     window.electronAPI.getEurUsdRate().then(setEurUsdRate).catch(() => setEurUsdRate(1.10))
-    const timeouts: ReturnType<typeof setTimeout>[] = []
-    unpriced.forEach((card, i) => {
-      const t = setTimeout(async () => {
-        try {
-          const batch = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
-          setLivePrices(prev => ({ ...prev, [card.tcgApiId]: batch[card.tcgApiId] ?? null }))
-        } catch { /* leave as null */ }
-      }, i * 100)
-      timeouts.push(t)
-    })
-    return () => timeouts.forEach(clearTimeout)
-  }, [cards])
+    // Single batched fetch for all unpriced cards
+    const t = setTimeout(async () => {
+      try {
+        const batch = await window.electronAPI!.getCardPricesBatch(unpriced.map(c => c.tcgApiId))
+        setLivePrices(prev => ({ ...prev, ...batch }))
+      } catch { /* leave as null */ }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [nonPocketCards])
 
   async function deleteCard(cardId: string) {
     if (!window.electronAPI) return
@@ -67,11 +71,14 @@ export function BinderCardGrid({
     onRefresh()
   }
 
-  const visible = hideUnpriced
-    ? cards.filter(c => c.priceMarket && c.priceMarket > 0)
-    : cards
+  const visible = useMemo(() =>
+    hideUnpriced
+      ? nonPocketCards.filter(c => c.priceMarket && c.priceMarket > 0)
+      : nonPocketCards,
+    [hideUnpriced, nonPocketCards]
+  )
 
-  const hiddenCount = cards.length - visible.length
+  const hiddenCount = nonPocketCards.length - visible.length
 
   return (
     <>
@@ -124,6 +131,7 @@ export function BinderCardGrid({
                       : card.imageUrl
                   }
                   alt={card.name}
+                  loading="lazy"
                   className="w-full aspect-[2.5/3.5] object-cover"
                 />
               ) : (

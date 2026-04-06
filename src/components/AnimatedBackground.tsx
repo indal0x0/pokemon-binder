@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useTheme, type BgAnimation } from './ThemeProvider'
+import { StarCanvas } from './StarCanvas'
 
 // Deterministic pseudo-random helpers — no Math.random() for SSR safety
 function drand(seed: number) { return ((seed * 9301 + 49297) % 233280) / 233280 }
@@ -16,14 +17,14 @@ const COUNTS: Record<BgAnimation, number> = {
   electric:  50,
   leaves:    70,
   snow:      110,
-  stars:     150,
+  stars:     0,   // handled by StarCanvas
   rain:      130,
   fireflies: 60,
   aurora:    8,
   pokeballs: 30,
   matrix:    40,
   bubbles:   70,
-  galaxy:    180,
+  galaxy:    0,   // handled by StarCanvas
   waves:     12,
   confetti:  90,
   fog:       10,
@@ -224,26 +225,7 @@ export function AnimatedBackground() {
   }
 
   if (bgAnimation === 'stars') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              top: `${p.top}%`,
-              width: `${1 + p.size * 4}px`,
-              height: `${1 + p.size * 4}px`,
-              borderRadius: '50%',
-              background: `oklch(0.90 ${0.05 + p.hue * 0.15} ${p.hue * 360})`,
-              opacity: 0,
-              animation: `bgStarTwinkle ${p.duration * 0.5 + 1}s ${p.delay}s ease-in-out infinite`,
-            }}
-          />
-        ))}
-      </div>
-    )
+    return <StarCanvas />
   }
 
   if (bgAnimation === 'rain') {
@@ -410,26 +392,7 @@ export function AnimatedBackground() {
   }
 
   if (bgAnimation === 'galaxy') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              top: `${p.top}%`,
-              width: `${1 + p.size * 3}px`,
-              height: `${1 + p.size * 3}px`,
-              borderRadius: '50%',
-              background: `oklch(0.88 ${0.08 + p.hue * 0.25} ${p.hue * 360})`,
-              opacity: 0,
-              animation: `bgGalaxyTwinkle ${p.duration * 0.4 + 0.8}s ${p.delay}s ease-in-out infinite`,
-            }}
-          />
-        ))}
-      </div>
-    )
+    return <StarCanvas />
   }
 
   if (bgAnimation === 'waves') {

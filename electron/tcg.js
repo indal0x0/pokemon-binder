@@ -253,4 +253,4 @@ async function fetchEurUsdRate() {
   return _eurUsdRate
 }
 
-module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch, fetchEurUsdRate }
+module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch, fetchEurUsdRate, isPocketCard }

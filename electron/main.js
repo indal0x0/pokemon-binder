@@ -228,9 +228,18 @@ ipcMain.handle('cards:list', (_, binderId, pageId) => {
   return getCards(binderId, pageId || undefined)
 })
 
+ipcMain.handle('cards:cleanup-pocket', () => {
+  const { deletePocketCards } = require('./db')
+  return deletePocketCards()
+})
+
 ipcMain.handle('cards:create', async (_, data) => {
   const { createCard, updateCardPrices } = require('./db')
-  const { fetchCardPrices } = require('./tcg')
+  const { fetchCardPrices, isPocketCard } = require('./tcg')
+  // Reject TCG Pocket cards at the IPC boundary
+  if (data?.tcgApiId && isPocketCard(String(data.tcgApiId))) {
+    throw new Error('TCG Pocket cards cannot be added to binders')
+  }
   const card = createCard(data)
   // Fetch prices immediately if we have a TCG ID
   if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-')) {
@@ -385,6 +394,8 @@ app.whenReady().then(() => {
 
   try {
     initDatabase()
+    // Remove any TCG Pocket cards that slipped into the database
+    try { const { deletePocketCards } = require('./db'); deletePocketCards() } catch { /* non-fatal */ }
     createWindow()
     setupAutoUpdater()
   } catch (err) {

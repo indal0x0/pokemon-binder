@@ -93,20 +93,46 @@ function initDb(Database, dbPath) {
     try { db.exec(sql) } catch { /* already exists */ }
   }
 
+  // Performance indexes (idempotent)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_bc_binderId  ON binder_cards(binderId);
+    CREATE INDEX IF NOT EXISTS idx_bc_pageId    ON binder_cards(pageId);
+    CREATE INDEX IF NOT EXISTS idx_bc_tcgApiId  ON binder_cards(tcgApiId);
+    CREATE INDEX IF NOT EXISTS idx_pages_binder ON pages(binderId);
+  `)
+
   return db
+}
+
+// ─── TCG Pocket cleanup ───────────────────────────────────────────────────────
+
+const POCKET_SET_IDS_DB = new Set(['A1', 'A1a', 'A2', 'A2a', 'A2b', 'A3', 'A3a', 'A3b', 'P-A', 'PA'])
+
+function deletePocketCards() {
+  const placeholders = Array.from(POCKET_SET_IDS_DB).map(() => '?').join(',')
+  const args = Array.from(POCKET_SET_IDS_DB)
+  const result = db.prepare(`
+    DELETE FROM binder_cards
+    WHERE tcgApiId LIKE 'tcgp%'
+       OR setId IN (${placeholders})
+  `).run(...args)
+  return result.changes
 }
 
 // ─── Binders ─────────────────────────────────────────────────────────────────
 
 function getBinders() {
-  const binders = db.prepare('SELECT * FROM binders ORDER BY createdAt DESC').all()
-  return binders.map(b => {
-    const cards = db.prepare('SELECT quantity, priceMarket FROM binder_cards WHERE binderId = ?').all(b.id)
-    const pages = db.prepare('SELECT COUNT(*) as count FROM pages WHERE binderId = ?').get(b.id)
-    const totalValue = cards.reduce((sum, c) => sum + (c.priceMarket || 0) * c.quantity, 0)
-    const cardCount = cards.reduce((sum, c) => sum + c.quantity, 0)
-    return { ...b, totalValue, cardCount, pageCount: pages.count }
-  })
+  return db.prepare(`
+    SELECT b.*,
+      COALESCE(SUM(bc.quantity * bc.priceMarket), 0) AS totalValue,
+      COALESCE(SUM(bc.quantity), 0)                  AS cardCount,
+      COUNT(DISTINCT p.id)                           AS pageCount
+    FROM binders b
+    LEFT JOIN binder_cards bc ON bc.binderId = b.id
+    LEFT JOIN pages        p  ON p.binderId  = b.id
+    GROUP BY b.id
+    ORDER BY b.createdAt DESC
+  `).all()
 }
 
 function getBinderById(id) {
@@ -364,5 +390,5 @@ module.exports = {
   getPages, getPageById, createPage, updatePage, deletePage, reorderPages,
   getCards, createCard, updateCard, deleteCard, getCardsForRefresh,
   updateCardPrices, updateCardPriceBase, updateCardPricesFull, updateCardCondition, getCardsByIds,
-  reorderPageCards, moveCard,
+  reorderPageCards, moveCard, deletePocketCards,
 }
