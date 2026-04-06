@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -93,13 +92,6 @@ function BinderPageInner() {
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    if (!binderId || !window.electronAPI) return
-    window.electronAPI.scrapeTcgplayerPrices(binderId)
-      .then(r => { if (r.updated > 0) toast.info(`Refreshed ${r.updated} TCGPlayer price${r.updated !== 1 ? 's' : ''}`) })
-      .catch(() => {})
-  }, [binderId])
-
   function openEditCover() {
     if (!binder) return
     if (binder.coverPreset) {
@@ -143,13 +135,6 @@ function BinderPageInner() {
     <div className="min-h-screen">
       <NavBar backHref="/" />
       <main className="p-6 max-w-5xl mx-auto">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
-        <Link href="/" className="hover:text-foreground transition-colors">Binders</Link>
-        <span className="opacity-40">›</span>
-        <span className="text-foreground/70 truncate max-w-48">{binder.name}</span>
-      </div>
-
       <div className="flex items-center gap-3 mb-6">
         <div className="relative group flex-shrink-0 cursor-pointer" onClick={openEditCover}>
           <BinderCover binder={binder} className="w-10 h-14 rounded" />
@@ -201,7 +186,7 @@ function BinderPageInner() {
             </div>
           )}
         </div>
-        <BinderActions binderId={binder.id} cards={binder.cards} onRefresh={load} />
+        <BinderActions binderId={binder.id} onRefresh={load} />
       </div>
 
       <div className="flex gap-3 mb-6">

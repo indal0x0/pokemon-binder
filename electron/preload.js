@@ -53,18 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // TCG card browser search
   searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 
-  // Daily TCGPlayer price scrape (runs in background on binder open)
-  scrapeTcgplayerPrices: (binderId) => ipcRenderer.invoke('tcg:scrape-binder-prices', binderId),
-
-  // Manual TCGPlayer price scrape for selected cards
-  scrapeSelectedCards: (cardIds) => ipcRenderer.invoke('tcg:scrape-selected', cardIds),
-
-  // Listen for per-card scrape progress
-  onScrapeProgress: (cb) => {
-    const handler = (_, d) => cb(d)
-    ipcRenderer.on('tcg:scrape-progress', handler)
-    return () => ipcRenderer.off('tcg:scrape-progress', handler)
-  },
+  // EUR/USD live exchange rate (cached per session)
+  getEurUsdRate: () => ipcRenderer.invoke('tcg:get-eur-usd-rate'),
 
   // Listen for per-card price refresh progress
   onPricesProgress: (cb) => {

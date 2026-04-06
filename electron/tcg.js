@@ -231,4 +231,21 @@ async function refreshCardPrices(tcgApiId) {
   return fetchCardPrices(tcgApiId)
 }
 
-module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch }
+// ─── EUR/USD exchange rate ────────────────────────────────────────────────────
+
+let _eurUsdRate = null
+
+async function fetchEurUsdRate() {
+  if (_eurUsdRate !== null) return _eurUsdRate
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/EUR', { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) throw new Error('rate fetch failed')
+    const data = await res.json()
+    _eurUsdRate = data?.rates?.USD ?? 1.10
+  } catch {
+    _eurUsdRate = 1.10
+  }
+  return _eurUsdRate
+}
+
+module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch, fetchEurUsdRate }

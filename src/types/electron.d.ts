@@ -57,6 +57,7 @@ export interface CardRow {
   condition: string | null
   tradeList: number
   position: number | null
+  purchasedPrice: number | null
   createdAt: string
   updatedAt: string
 }
@@ -120,7 +121,6 @@ interface ElectronAPI {
   getPage(pageId: string): Promise<(PageRow & { cards: CardRow[] }) | null>
   createPage(data: { binderId: string; name?: string; imagePath?: string; status?: string; cols?: number; rows?: number }): Promise<PageRow>
   updatePage(pageId: string, data: { name?: string; position?: number; status?: string; rawAiOutput?: string; processedAt?: string; cols?: number; rows?: number; imagePath?: string }): Promise<PageRow>
-  scrapeTcgplayerPrices(binderId: string): Promise<{ updated: number; skipped: number }>
   deletePage(pageId: string): Promise<boolean>
   reorderPages(binderId: string, orderedIds: string[]): Promise<boolean>
   reorderPageCards(pageId: string, positions: Array<{ id: string; position: number }>): Promise<boolean>
@@ -128,7 +128,7 @@ interface ElectronAPI {
 
   listCards(binderId: string, pageId?: string): Promise<CardRow[]>
   createCard(data: Partial<CardRow>): Promise<CardRow>
-  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null }): Promise<CardRow>
+  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null; purchasedPrice?: number | null }): Promise<CardRow>
   uploadCardImage(cardId: string, binderId: string, file: File): Promise<CardRow>
   getCardPrices(tcgApiId: string): Promise<FullCardPricing | null>
   getCardPricesBatch(tcgApiIds: string[]): Promise<Record<string, FullCardPricing | null>>
@@ -139,8 +139,7 @@ interface ElectronAPI {
   searchTcg(query: string, page?: number): Promise<TcgSearchResult>
   getImageUrl(imagePath: string | null): string | null
 
-  scrapeSelectedCards(cardIds: string[]): Promise<{ updated: number }>
-  onScrapeProgress(cb: (data: { current: number; total: number; name: string }) => void): () => void
+  getEurUsdRate(): Promise<number>
   onPricesProgress(cb: (data: { current: number; total: number; name: string }) => void): () => void
 }
 

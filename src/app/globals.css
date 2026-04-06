@@ -644,6 +644,27 @@ html[data-theme="aurora"] {
   --ring: oklch(0.75 0.22 160);
 }
 
+/* ─── Theme: Pokemon PC (Gen 4/5 DPPt DS PC aesthetic) ─────────────────── */
+html[data-theme="pokepc"] {
+  --background: oklch(0.14 0.06 245);
+  --foreground: oklch(0.94 0.02 240);
+  --card: oklch(0.19 0.07 245);
+  --card-foreground: oklch(0.94 0.02 240);
+  --popover: oklch(0.17 0.07 245);
+  --popover-foreground: oklch(0.94 0.02 240);
+  --primary: oklch(0.52 0.22 240);
+  --primary-foreground: oklch(0.97 0.01 240);
+  --secondary: oklch(0.23 0.07 245);
+  --secondary-foreground: oklch(0.85 0.04 240);
+  --muted: oklch(0.22 0.05 245);
+  --muted-foreground: oklch(0.60 0.06 240);
+  --accent: oklch(0.72 0.20 62);
+  --accent-foreground: oklch(0.15 0.04 60);
+  --border: oklch(0.30 0.08 245);
+  --input: oklch(0.30 0.08 245);
+  --ring: oklch(0.52 0.22 240);
+}
+
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: none; }
@@ -701,6 +722,68 @@ html[data-theme="aurora"] {
   10%      { opacity: 0; }
   60%, 62% { opacity: 0.55; }
   64%      { opacity: 0; }
+}
+@keyframes bgRainFall {
+  0%   { transform: translateY(-10px) translateX(0);    opacity: 0; }
+  5%   { opacity: 0.6; }
+  95%  { opacity: 0.4; }
+  100% { transform: translateY(100vh) translateX(-20px); opacity: 0; }
+}
+@keyframes bgFireflyFloat {
+  0%        { transform: translateY(0) translateX(0) scale(0.8); opacity: 0; }
+  20%       { opacity: 0.9; }
+  50%       { transform: translateY(-30px) translateX(20px) scale(1.2); opacity: 1; }
+  80%       { opacity: 0.7; }
+  100%      { transform: translateY(-60px) translateX(-10px) scale(0.8); opacity: 0; }
+}
+@keyframes bgAuroraShift {
+  0%   { transform: translateX(-30%) skewX(-10deg); opacity: 0.15; }
+  25%  { opacity: 0.35; }
+  50%  { transform: translateX(30%) skewX(10deg);  opacity: 0.20; }
+  75%  { opacity: 0.30; }
+  100% { transform: translateX(-30%) skewX(-10deg); opacity: 0.15; }
+}
+@keyframes bgPokeballFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg);    opacity: 0; }
+  15%      { opacity: 0.7; }
+  50%      { transform: translateY(-40px) rotate(180deg); opacity: 0.8; }
+  85%      { opacity: 0.5; }
+}
+@keyframes bgMatrixFall {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  5%   { opacity: 0.8; }
+  95%  { opacity: 0.4; }
+  100% { transform: translateY(100vh);  opacity: 0; }
+}
+@keyframes bgBubbleRise {
+  0%   { transform: translateY(0) scale(1);     opacity: 0; }
+  10%  { opacity: 0.6; }
+  50%  { transform: translateY(-45vh) scale(1.1); }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-100vh) scale(0.8); opacity: 0; }
+}
+@keyframes bgGalaxyTwinkle {
+  0%, 100% { opacity: 0.05; transform: scale(0.6); }
+  33%      { opacity: 0.80; transform: scale(1.4); }
+  66%      { opacity: 0.40; transform: scale(1.0); }
+}
+@keyframes bgWaveMove {
+  0%   { transform: translateX(0) translateY(0); opacity: 0.4; }
+  50%  { transform: translateX(-40px) translateY(8px); opacity: 0.7; }
+  100% { transform: translateX(0) translateY(0); opacity: 0.4; }
+}
+@keyframes bgConfettiFall {
+  0%   { transform: translateY(-10px) rotate(0deg) translateX(0);    opacity: 0; }
+  8%   { opacity: 0.9; }
+  90%  { opacity: 0.6; }
+  100% { transform: translateY(100vh) rotate(720deg) translateX(40px); opacity: 0; }
+}
+@keyframes bgFogDrift {
+  0%   { transform: translateX(-5%) scale(1);    opacity: 0; }
+  20%  { opacity: 0.18; }
+  50%  { transform: translateX(5%) scale(1.05);  opacity: 0.22; }
+  80%  { opacity: 0.15; }
+  100% { transform: translateX(-5%) scale(1);    opacity: 0; }
 }
 
 .animate-fade-slide-up { animation: fadeSlideUp 0.45s ease both; }

@@ -330,24 +330,9 @@ ipcMain.handle('tcg:search', async (_, query, page = 1) => {
   return searchCards(query, page)
 })
 
-// ─── IPC: TCGPlayer daily price scrape ────────────────────────────────────────
-
-ipcMain.handle('tcg:scrape-binder-prices', async (_, binderId) => {
-  const { getCardsForRefresh } = require('./db')
-  const { scrapeBatchPrices } = require('./tcgplayer')
-  return scrapeBatchPrices(store, getCardsForRefresh(binderId))
-})
-
-ipcMain.handle('tcg:scrape-selected', async (event, cardIds) => {
-  const { getCardsByIds, updateCardPriceBase } = require('./db')
-  const { scrapeSelectedCards } = require('./tcgplayer')
-  const cards = getCardsByIds(cardIds)
-  return scrapeSelectedCards(cards, (progress, price, cardId) => {
-    event.sender.send('tcg:scrape-progress', progress)
-    if (price != null && cardId) {
-      updateCardPriceBase(cardId, price)
-    }
-  })
+ipcMain.handle('tcg:get-eur-usd-rate', async () => {
+  const { fetchEurUsdRate } = require('./tcg')
+  return fetchEurUsdRate()
 })
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────

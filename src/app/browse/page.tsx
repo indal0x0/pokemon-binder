@@ -8,7 +8,8 @@ import { Search, Plus, Check, Loader2 } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import type { TcgCardResult, PageRow, FullCardPricing } from '@/types/electron'
+import type { TcgCardResult, FullCardPricing, CardRow } from '@/types/electron'
+import { CardDetailModal } from '@/components/CardDetailModal'
 
 export default function BrowsePage() {
   const params = typeof window !== 'undefined'
@@ -25,6 +26,7 @@ export default function BrowsePage() {
   const [cardPrices, setCardPrices] = useState<Record<string, FullCardPricing | null | undefined>>({})
   const [filterHasPrice, setFilterHasPrice] = useState(false)
   const [conditionById, setConditionById] = useState<Record<string, string>>({})
+  const [selectedBrowseCard, setSelectedBrowseCard] = useState<TcgCardResult | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
@@ -178,14 +180,16 @@ export default function BrowsePage() {
               const displayPrice = fetchedPricing?.bestMarket ?? card.priceMarket
               return (
                 <div key={card.tcgApiId} className="relative bg-card border rounded-lg overflow-hidden">
+                  <div className="cursor-pointer" onClick={() => setSelectedBrowseCard(card)}>
                   {card.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover" />
+                    <img src={card.imageUrl} alt={card.name} className="w-full aspect-[2.5/3.5] object-cover hover:opacity-90 transition-opacity" />
                   ) : (
                     <div className="w-full aspect-[2.5/3.5] bg-secondary flex items-center justify-center">
                       <span className="text-xs text-muted-foreground text-center px-2">{card.name}</span>
                     </div>
                   )}
+                  </div>
                   <div className="p-2">
                     <p className="text-xs font-medium leading-tight truncate">{card.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{card.setName}</p>
@@ -242,6 +246,40 @@ export default function BrowsePage() {
         )
       })()}
     </main>
+
+    {selectedBrowseCard && (
+      <CardDetailModal
+        readOnly
+        card={{
+          id: '',
+          binderId: '',
+          pageId: null,
+          tcgApiId: selectedBrowseCard.tcgApiId,
+          name: selectedBrowseCard.name,
+          setId: selectedBrowseCard.setId,
+          setName: selectedBrowseCard.setName,
+          collectorNumber: selectedBrowseCard.collectorNumber,
+          rarity: selectedBrowseCard.rarity ?? null,
+          imageUrl: selectedBrowseCard.imageUrl ?? null,
+          year: selectedBrowseCard.year ?? null,
+          priceLow: selectedBrowseCard.priceLow ?? null,
+          priceMid: selectedBrowseCard.priceMid ?? null,
+          priceMarket: selectedBrowseCard.priceMarket ?? null,
+          priceHigh: selectedBrowseCard.priceHigh ?? null,
+          priceBase: null,
+          priceUpdatedAt: selectedBrowseCard.priceUpdatedAt ?? null,
+          quantity: 1,
+          condition: null,
+          tradeList: 0,
+          position: null,
+          purchasedPrice: null,
+          createdAt: '',
+          updatedAt: '',
+        } satisfies CardRow}
+        onClose={() => setSelectedBrowseCard(null)}
+        onCardUpdated={() => {}}
+      />
+    )}
     </div>
   )
 }

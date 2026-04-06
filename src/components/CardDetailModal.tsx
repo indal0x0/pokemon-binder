@@ -11,6 +11,7 @@ interface Props {
   card: CardRow | null
   onClose: () => void
   onCardUpdated: (card: CardRow) => void
+  readOnly?: boolean
 }
 
 const CONDITIONS = [
@@ -21,12 +22,15 @@ const CONDITIONS = [
   { short: 'DMG', label: 'Damaged',            pct: 0.20 },
 ]
 
-export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
+export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false }: Props) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [pricing, setPricing] = useState<FullCardPricing | null>(null)
   const [loadingPrices, setLoadingPrices] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
+  const [purchasedPriceInput, setPurchasedPriceInput] = useState('')
+  const [savingPurchasedPrice, setSavingPurchasedPrice] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -39,6 +43,22 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
       .catch(() => setPricing(null))
       .finally(() => setLoadingPrices(false))
   }, [card?.tcgApiId])
+
+  useEffect(() => {
+    if (card) {
+      setPurchasedPriceInput(card.purchasedPrice != null ? String(card.purchasedPrice) : '')
+    }
+  }, [card?.id])
+
+  // Fetch EUR/USD rate when we have cardmarket data but no USD variants
+  useEffect(() => {
+    if (!pricing) return
+    const hasUsd = pricing.variants && pricing.variants.length > 0
+    const hasEur = pricing.cardmarket && (pricing.cardmarket.avg != null || pricing.cardmarket.trend != null)
+    if (!hasUsd && hasEur && eurUsdRate === null) {
+      window.electronAPI?.getEurUsdRate().then(rate => setEurUsdRate(rate)).catch(() => setEurUsdRate(1.10))
+    }
+  }, [pricing, eurUsdRate])
 
   if (!card) return null
 
@@ -59,7 +79,23 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
     }
   }
 
+  async function savePurchasedPrice() {
+    if (!window.electronAPI || !card) return
+    const val = purchasedPriceInput.trim()
+    const parsed = val === '' ? null : parseFloat(val)
+    if (parsed !== null && isNaN(parsed)) return
+    setSavingPurchasedPrice(true)
+    try {
+      const updated = await window.electronAPI.updateCard(card.id, { purchasedPrice: parsed })
+      onCardUpdated(updated)
+    } finally {
+      setSavingPurchasedPrice(false)
+    }
+  }
+
   const bestMarket = pricing?.bestMarket ?? card.priceMarket
+  const hasUsdVariants = pricing?.variants && pricing.variants.length > 0
+  const hasCardmarket = !!pricing?.cardmarket
 
   return (
     <>
@@ -107,6 +143,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                 {card.collectorNumber && <Tag>#{card.collectorNumber}</Tag>}
                 {card.year && <Tag>{card.year}</Tag>}
                 {card.rarity && <Tag>{card.rarity}</Tag>}
+                {!readOnly && (
                 <select
                   value={card.condition ?? ''}
                   onChange={async e => {
@@ -121,6 +158,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                     <option key={c.short} value={c.short}>{c.short} – {c.label}</option>
                   ))}
                 </select>
+                )}
               </div>
             </div>
 
@@ -130,6 +168,31 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                 <p className="text-4xl font-bold text-primary">{formatCurrency(bestMarket)}</p>
               </div>
             )}
+
+            {/* Purchase price */}
+            {!readOnly && <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">Purchase Price</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={purchasedPriceInput}
+                  onChange={e => setPurchasedPriceInput(e.target.value)}
+                  onBlur={savePurchasedPrice}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+                  className="w-28 text-sm px-2 py-1 rounded-md border border-border bg-background text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                {savingPurchasedPrice && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                {card.purchasedPrice != null && bestMarket != null && (
+                  <span className={`text-xs font-semibold ${bestMarket >= card.purchasedPrice ? 'text-green-500' : 'text-red-400'}`}>
+                    {bestMarket >= card.purchasedPrice ? '+' : ''}{formatCurrency(bestMarket - card.purchasedPrice)}
+                  </span>
+                )}
+              </div>
+            </div>}
           </div>
         </div>
 
@@ -161,11 +224,11 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
               )}
 
               {/* TCGPlayer variants */}
-              {pricing?.variants && pricing.variants.length > 0 && (
+              {hasUsdVariants && (
                 <div className="flex-1 min-w-[220px]">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">TCGPlayer</p>
                   <div className="space-y-4">
-                    {pricing.variants.map(v => (
+                    {pricing!.variants.map(v => (
                       <div key={v.label}>
                         <p className="text-sm font-semibold text-foreground/80 mb-2">{v.label}</p>
                         <div className="space-y-1">
@@ -190,9 +253,14 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
               )}
 
               {/* Cardmarket */}
-              {pricing?.cardmarket && (
+              {hasCardmarket && pricing?.cardmarket && (
                 <div className="flex-1 min-w-[200px]">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">Cardmarket <span className="normal-case">(EUR)</span></p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">
+                    Cardmarket <span className="normal-case">(EUR)</span>
+                    {!hasUsdVariants && eurUsdRate && (
+                      <span className="ml-1 text-muted-foreground/40 normal-case">· ~USD shown</span>
+                    )}
+                  </p>
                   <div className="space-y-1">
                     {[
                       { label: 'Average', value: pricing.cardmarket.avg },
@@ -203,9 +271,14 @@ export function CardDetailModal({ card, onClose, onCardUpdated }: Props) {
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
                         <span className="text-sm text-muted-foreground">{label}</span>
-                        <span className="text-base font-bold tabular-nums">
-                          {value != null ? `€${value.toFixed(2)}` : '—'}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-base font-bold tabular-nums">
+                            {value != null ? `€${value.toFixed(2)}` : '—'}
+                          </span>
+                          {!hasUsdVariants && eurUsdRate && value != null && (
+                            <p className="text-xs text-muted-foreground/50 tabular-nums">~{formatCurrency(value * eurUsdRate)}</p>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

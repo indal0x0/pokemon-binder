@@ -12,18 +12,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
-import { RefreshCw, Trash2, Search } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { TcgScraperModal } from './TcgScraperModal'
-import type { CardRow } from '@/types/electron'
 
 export function BinderActions({
   binderId,
-  cards,
   onRefresh,
 }: {
   binderId: string
-  cards: CardRow[]
   onRefresh: () => void
 }) {
   const router = useRouter()
@@ -32,7 +28,6 @@ export function BinderActions({
   const [refreshLabel, setRefreshLabel] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [scraperOpen, setScraperOpen] = useState(false)
 
   // Register progress listener for price refresh
   useEffect(() => {
@@ -92,16 +87,6 @@ export function BinderActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setScraperOpen(true)}
-            disabled={refreshing}
-            title="Scrape more accurate prices from TCGPlayer"
-          >
-            <Search className="h-3.5 w-3.5 mr-1.5" />
-            Scrape TCGPlayer
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => setConfirmOpen(true)}
             disabled={deleting}
             className="text-destructive hover:text-destructive"
@@ -125,13 +110,6 @@ export function BinderActions({
           </div>
         )}
       </div>
-
-      <TcgScraperModal
-        open={scraperOpen}
-        cards={cards}
-        onClose={() => setScraperOpen(false)}
-        onDone={() => { setScraperOpen(false); onRefresh() }}
-      />
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

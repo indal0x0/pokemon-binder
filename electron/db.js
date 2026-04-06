@@ -87,6 +87,7 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binders ADD COLUMN coverPreset TEXT`,
     `ALTER TABLE binder_cards ADD COLUMN year INTEGER`,
     `ALTER TABLE binder_cards ADD COLUMN priceBase REAL`,
+    `ALTER TABLE binder_cards ADD COLUMN purchasedPrice REAL`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -254,7 +255,7 @@ function createCard(data) {
 }
 
 function updateCard(id, data) {
-  const { quantity, condition, tradeList, imageUrl } = data
+  const { quantity, condition, tradeList, imageUrl, purchasedPrice } = data
   const parts = [
     'quantity  = COALESCE(?, quantity)',
     'condition = COALESCE(?, condition)',
@@ -263,6 +264,7 @@ function updateCard(id, data) {
   ]
   const params = [quantity ?? null, condition ?? null, tradeList != null ? (tradeList ? 1 : 0) : null, now()]
   if ('imageUrl' in data) { parts.push('imageUrl = ?'); params.push(imageUrl ?? null) }
+  if ('purchasedPrice' in data) { parts.push('purchasedPrice = ?'); params.push(purchasedPrice ?? null) }
   params.push(id)
   db.prepare(`UPDATE binder_cards SET ${parts.join(', ')} WHERE id = ?`).run(...params)
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)

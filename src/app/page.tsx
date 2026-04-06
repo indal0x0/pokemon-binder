@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BinderCover } from '@/components/BinderCover'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, BookOpen, Settings } from 'lucide-react'
+import { Plus, BookOpen, Settings, Menu } from 'lucide-react'
 import type { BinderRow } from '@/types/electron'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { NavSidebar } from '@/components/NavSidebar'
 
 export default function HomePage() {
   const [binders, setBinders] = useState<BinderRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!window.electronAPI) { setLoading(false); return }
@@ -23,9 +25,19 @@ export default function HomePage() {
   }, [])
 
   return (
+    <>
+    <NavSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     <main className="min-h-screen p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
-        <div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <div>
           <h1 className="text-2xl font-bold tracking-tight shimmer-text">Pokemon Binder</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Track and value your collection
@@ -35,6 +47,7 @@ export default function HomePage() {
               </span>
             )}
           </p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <ThemeSwitcher />
@@ -84,5 +97,6 @@ export default function HomePage() {
         </div>
       )}
     </main>
+    </>
   )
 }

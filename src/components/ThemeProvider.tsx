@@ -8,9 +8,11 @@ export type Theme =
   | 'inferno' | 'abyss' | 'verdant' | 'thunder' | 'psyche'
   | 'glacier' | 'specter' | 'chrome' | 'blush' | 'toxin'
   | 'brawler' | 'terra' | 'tempest' | 'synthwave' | 'neon'
-  | 'sunset' | 'aurora'
+  | 'sunset' | 'aurora' | 'pokepc'
 
-export type BgAnimation = 'none' | 'sparkles' | 'gradient' | 'fire' | 'water' | 'electric' | 'leaves' | 'snow' | 'stars'
+export type BgAnimation =
+  | 'none' | 'sparkles' | 'gradient' | 'fire' | 'water' | 'electric' | 'leaves' | 'snow' | 'stars'
+  | 'rain' | 'fireflies' | 'aurora' | 'pokeballs' | 'matrix' | 'bubbles' | 'galaxy' | 'waves' | 'confetti' | 'fog'
 
 const THEMES: { id: Theme; label: string; color: string }[] = [
   // Original themes
@@ -40,18 +42,30 @@ const THEMES: { id: Theme; label: string; color: string }[] = [
   { id: 'neon',       label: 'Neon',        color: 'oklch(0.72 0.30 210)'  },
   { id: 'sunset',     label: 'Sunset',      color: 'oklch(0.72 0.28 50)'   },
   { id: 'aurora',     label: 'Aurora',      color: 'oklch(0.75 0.22 160)'  },
+  // Special
+  { id: 'pokepc',     label: 'Pokemon PC',  color: 'oklch(0.52 0.22 240)'  },
 ]
 
 const ANIMATIONS: { id: BgAnimation; label: string; icon: string }[] = [
-  { id: 'none',     label: 'None',     icon: '○' },
-  { id: 'sparkles', label: 'Sparkles', icon: '✦' },
-  { id: 'gradient', label: 'Gradient', icon: '◈' },
-  { id: 'fire',     label: 'Fire',     icon: '△' },
-  { id: 'water',    label: 'Water',    icon: '◉' },
-  { id: 'electric', label: 'Electric', icon: '⚡' },
-  { id: 'leaves',   label: 'Leaves',   icon: '❋' },
-  { id: 'snow',     label: 'Snow',     icon: '❄' },
-  { id: 'stars',    label: 'Stars',    icon: '★' },
+  { id: 'none',      label: 'None',      icon: '○' },
+  { id: 'sparkles',  label: 'Sparkles',  icon: '✦' },
+  { id: 'gradient',  label: 'Gradient',  icon: '◈' },
+  { id: 'fire',      label: 'Fire',      icon: '🔥' },
+  { id: 'water',     label: 'Water',     icon: '💧' },
+  { id: 'electric',  label: 'Electric',  icon: '⚡' },
+  { id: 'leaves',    label: 'Leaves',    icon: '🍃' },
+  { id: 'snow',      label: 'Snow',      icon: '❄' },
+  { id: 'stars',     label: 'Stars',     icon: '★' },
+  { id: 'rain',      label: 'Rain',      icon: '🌧' },
+  { id: 'fireflies', label: 'Fireflies', icon: '✨' },
+  { id: 'aurora',    label: 'Aurora',    icon: '🌌' },
+  { id: 'pokeballs', label: 'Pokéballs', icon: '⚽' },
+  { id: 'matrix',    label: 'Matrix',    icon: '▓' },
+  { id: 'bubbles',   label: 'Bubbles',   icon: '◎' },
+  { id: 'galaxy',    label: 'Galaxy',    icon: '✧' },
+  { id: 'waves',     label: 'Waves',     icon: '〜' },
+  { id: 'confetti',  label: 'Confetti',  icon: '🎊' },
+  { id: 'fog',       label: 'Fog',       icon: '☁' },
 ]
 
 const ThemeContext = createContext<{
