@@ -28,6 +28,7 @@ export function BinderActions({
   const [refreshLabel, setRefreshLabel] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false)
 
   // Register progress listener for price refresh
   useEffect(() => {
@@ -78,7 +79,7 @@ export function BinderActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={refreshPrices}
+            onClick={() => setRefreshConfirmOpen(true)}
             disabled={refreshing}
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -110,6 +111,25 @@ export function BinderActions({
           </div>
         )}
       </div>
+
+      <Dialog open={refreshConfirmOpen} onOpenChange={setRefreshConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refresh prices?</DialogTitle>
+            <DialogDescription>
+              Prices will be fetched from TCGPlayer and Cardmarket for every card in this binder. This may take a few minutes for large binders. Condition adjustments will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefreshConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => { setRefreshConfirmOpen(false); refreshPrices() }}>
+              Refresh
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

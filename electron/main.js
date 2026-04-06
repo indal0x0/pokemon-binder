@@ -266,8 +266,8 @@ ipcMain.handle('cards:delete', (_, id) => {
 })
 
 ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
-  const { getCardsForRefresh, updateCardPrices } = require('./db')
-  const { refreshCardPrices } = require('./tcg')
+  const { getCardsForRefresh, updateCardPricesFull } = require('./db')
+  const { getFullCardPricing } = require('./tcg')
 
   const cards = getCardsForRefresh(binderId)
   let updated = 0
@@ -275,9 +275,9 @@ ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
     const card = cards[i]
     event.sender.send('prices:progress', { current: i, total: cards.length, name: card.name })
     try {
-      const prices = await refreshCardPrices(card.tcgApiId)
-      if (prices) {
-        updateCardPrices(card.id, prices)
+      const pricing = await getFullCardPricing(card.tcgApiId)
+      if (pricing?.bestMarket != null) {
+        updateCardPricesFull(card.id, pricing, card.condition)
         updated++
       }
     } catch { /* skip failed cards */ }

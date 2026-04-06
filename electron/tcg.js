@@ -81,7 +81,8 @@ async function getPokemonTcgPricing(tcgApiId) {
         variants.push({ label, low: p.low ?? null, mid: p.mid ?? null, market: p.market ?? null, high: p.high ?? null })
       }
     }
-    const bestMarket = variants.find(v => v.market)?.market ?? null
+    const bestMarket = variants.reduce((max, v) =>
+      v.market != null && v.market > (max ?? -Infinity) ? v.market : max, null)
     if (!variants.length && !bestMarket && !cmPrices) return null
     return {
       variants,
@@ -155,7 +156,8 @@ async function getFullCardPricing(tcgApiId) {
         }
       }
     }
-    const bestMarket = variants.find(v => v.market)?.market ?? null
+    const bestMarket = variants.reduce((max, v) =>
+      v.market != null && v.market > (max ?? -Infinity) ? v.market : max, null)
     return {
       variants,
       bestMarket,
@@ -184,6 +186,9 @@ async function searchCards(query, page = 1) {
   } catch {
     return { cards: [], hasMore: false }
   }
+
+  // Save raw count before filtering so hasMore is accurate
+  const totalRaw = rawCards.length
 
   // Filter out TCG Pocket cards (card IDs and set IDs start with "tcgp")
   rawCards = rawCards.filter(card => !isPocketCard(String(card.id || '')))
@@ -215,7 +220,7 @@ async function searchCards(query, page = 1) {
     }
   })
 
-  return { cards, hasMore: rawCards.length === PAGE_SIZE }
+  return { cards, hasMore: totalRaw === PAGE_SIZE }
 }
 
 async function getCardPricesBatch(tcgApiIds) {

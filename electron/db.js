@@ -299,6 +299,30 @@ function updateCardPriceBase(id, priceMarket) {
     .run(priceMarket, priceMarket, now(), id)
 }
 
+function updateCardPricesFull(id, pricing, condition) {
+  const rawMarket = pricing.bestMarket ?? null
+  if (rawMarket == null) return
+  const multiplier = condition ? (CONDITION_MULTIPLIERS[condition] ?? 1.0) : 1.0
+  const adjustedMarket = Math.round(rawMarket * multiplier * 100) / 100
+  const bestVariant = pricing.variants?.find(v => v.market === rawMarket)
+    ?? pricing.variants?.[0] ?? null
+  db.prepare(`
+    UPDATE binder_cards SET
+      priceLow = ?, priceMid = ?, priceMarket = ?, priceHigh = ?,
+      priceUpdatedAt = ?, updatedAt = ?, priceBase = ?
+    WHERE id = ?
+  `).run(
+    bestVariant?.low ?? null,
+    bestVariant?.mid ?? null,
+    adjustedMarket,
+    bestVariant?.high ?? null,
+    new Date().toISOString(),
+    now(),
+    rawMarket,
+    id
+  )
+}
+
 function updateCardCondition(id, condition) {
   const card = db.prepare('SELECT priceBase, priceMarket FROM binder_cards WHERE id = ?').get(id)
   if (!card) return
@@ -339,6 +363,6 @@ module.exports = {
   getBinders, getBinderById, createBinder, updateBinder, deleteBinder,
   getPages, getPageById, createPage, updatePage, deletePage, reorderPages,
   getCards, createCard, updateCard, deleteCard, getCardsForRefresh,
-  updateCardPrices, updateCardPriceBase, updateCardCondition, getCardsByIds,
+  updateCardPrices, updateCardPriceBase, updateCardPricesFull, updateCardCondition, getCardsByIds,
   reorderPageCards, moveCard,
 }
