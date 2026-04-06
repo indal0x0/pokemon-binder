@@ -25,7 +25,6 @@ export default function BrowsePage() {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   const [cardPrices, setCardPrices] = useState<Record<string, FullCardPricing | null | undefined>>({})
   const [filterHasPrice, setFilterHasPrice] = useState(false)
-  const [conditionById, setConditionById] = useState<Record<string, string>>({})
   const [selectedBrowseCard, setSelectedBrowseCard] = useState<TcgCardResult | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -91,7 +90,7 @@ export default function BrowsePage() {
         priceUpdatedAt: card.priceUpdatedAt ?? undefined,
         quantity: 1,
         tradeList: 0,
-        condition: conditionById[card.tcgApiId] || null,
+        condition: null,
       } as Parameters<typeof window.electronAPI.createCard>[0])
       setAddedIds(prev => new Set(prev).add(card.tcgApiId))
       toast.success(`Added ${card.name}`)
@@ -208,19 +207,6 @@ export default function BrowsePage() {
                         <Badge variant="outline" className="text-[10px] px-1 py-0 truncate max-w-16">{card.rarity}</Badge>
                       )}
                     </div>
-                    <select
-                      value={conditionById[card.tcgApiId] ?? ''}
-                      onChange={e => setConditionById(prev => ({ ...prev, [card.tcgApiId]: e.target.value }))}
-                      className="w-full mt-1 text-[10px] px-1 py-0.5 rounded border border-border bg-background text-foreground"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <option value="">— Condition —</option>
-                      <option value="NM">NM</option>
-                      <option value="LP">LP</option>
-                      <option value="MP">MP</option>
-                      <option value="HP">HP</option>
-                      <option value="DMG">DMG</option>
-                    </select>
                     {binderId && (
                       <Button
                         size="sm"

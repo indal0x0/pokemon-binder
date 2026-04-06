@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, ArrowLeftRight, EyeOff } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import type { CardRow } from '@/types/electron'
+import type { CardRow, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from './CardDetailModal'
 
 export function BinderCardGrid({
@@ -20,6 +20,25 @@ export function BinderCardGrid({
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [hideUnpriced, setHideUnpriced] = useState(false)
   const [selectedCard, setSelectedCard] = useState<CardRow | null>(null)
+  const [livePrices, setLivePrices] = useState<Record<string, FullCardPricing | null>>({})
+  const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
+
+  useEffect(() => {
+    const unpriced = cards.filter(c => c.priceMarket == null && !c.tcgApiId.startsWith('unmatched-'))
+    if (!unpriced.length || !window.electronAPI) return
+    window.electronAPI.getEurUsdRate().then(setEurUsdRate).catch(() => setEurUsdRate(1.10))
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+    unpriced.forEach((card, i) => {
+      const t = setTimeout(async () => {
+        try {
+          const batch = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
+          setLivePrices(prev => ({ ...prev, [card.tcgApiId]: batch[card.tcgApiId] ?? null }))
+        } catch { /* leave as null */ }
+      }, i * 100)
+      timeouts.push(t)
+    })
+    return () => timeouts.forEach(clearTimeout)
+  }, [cards])
 
   async function deleteCard(cardId: string) {
     if (!window.electronAPI) return
@@ -125,7 +144,17 @@ export function BinderCardGrid({
               )}
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm font-bold text-primary">
-                  {card.priceMarket ? formatCurrency(card.priceMarket) : <span className="text-muted-foreground/50 text-xs font-normal">No price</span>}
+                  {card.priceMarket
+                    ? formatCurrency(card.priceMarket)
+                    : (() => {
+                        const live = livePrices[card.tcgApiId]
+                        const eur = live?.cardmarket?.trend ?? live?.bestMarket ?? null
+                        if (eur != null && eurUsdRate) {
+                          return <>~{formatCurrency(eur * eurUsdRate)}</>
+                        }
+                        return <span className="text-muted-foreground/50 text-xs font-normal">No price</span>
+                      })()
+                  }
                 </p>
                 <div className="flex gap-1">
                   {card.quantity > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0">×{card.quantity}</Badge>}

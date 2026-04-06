@@ -437,18 +437,6 @@ function PageDetailInner() {
       </div>
       {/* Header */}
       <div className="border-b bg-background z-10 flex-shrink-0">
-        <div className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">Binders</Link>
-          <span className="opacity-40">›</span>
-          <Link
-            href={`/binder?id=${page?.binderId || binderId}`}
-            className="hover:text-foreground transition-colors truncate max-w-32"
-          >
-            {binderName || '…'}
-          </Link>
-          <span className="opacity-40">›</span>
-          <span className="text-foreground/70 truncate">{page.name}</span>
-        </div>
         <div className="max-w-6xl mx-auto px-6 pb-2 flex items-center gap-3">
           <h1 className="font-semibold flex-1 truncate">{page.name}</h1>
           <button
