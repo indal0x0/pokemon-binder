@@ -42,7 +42,7 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# Pokemon Binder
+# OffDex
 /public/uploads/
 *.db
 *.db-journal

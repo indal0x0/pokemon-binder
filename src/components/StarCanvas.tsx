@@ -35,9 +35,9 @@ function createStars(count: number, width: number, height: number): Star[] {
     return {
       x: r1 * width,
       y: r2 * height,
-      vx: (r3 - 0.5) * 0.15,
-      vy: (r4 - 0.5) * 0.10,
-      radius: 0.4 + r5 * 1.4,
+      vx: (r3 - 0.5) * 0.28,
+      vy: (r4 - 0.5) * 0.20,
+      radius: 0.5 + r5 * 2.2,
       opacity: 0.4 + r3 * 0.6,
       twinkleSpeed: 0.005 + r4 * 0.015,
       twinklePhase: r5 * Math.PI * 2,
@@ -62,7 +62,7 @@ export function StarCanvas() {
       if (!canvas) return
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
-      starsRef.current = createStars(220, canvas.width, canvas.height)
+      starsRef.current = createStars(480, canvas.width, canvas.height)
     }
 
     resize()

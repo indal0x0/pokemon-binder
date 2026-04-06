@@ -15,6 +15,15 @@ const isDev = !app.isPackaged
 let mainWindow = null
 let db = null
 
+// ─── Preserve user data from old "Pokemon Binder" app name ───────────────────
+// If the legacy data folder exists, keep using it so existing collections survive the rename.
+;(() => {
+  const oldPath = path.join(app.getPath('appData'), 'Pokemon Binder')
+  if (fs.existsSync(oldPath)) {
+    app.setPath('userData', oldPath)
+  }
+})()
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getUserDataPath(...segments) {
@@ -46,7 +55,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'Pokemon Binder',
+    title: 'OffDex',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -234,20 +243,24 @@ ipcMain.handle('cards:cleanup-pocket', () => {
 })
 
 ipcMain.handle('cards:create', async (_, data) => {
-  const { createCard, updateCardPrices } = require('./db')
-  const { fetchCardPrices, isPocketCard } = require('./tcg')
+  const { createCard, updateCardPricesFull } = require('./db')
+  const { getFullCardPricing, fetchEurUsdRate, isPocketCard } = require('./tcg')
   // Reject TCG Pocket cards at the IPC boundary
   if (data?.tcgApiId && isPocketCard(String(data.tcgApiId))) {
     throw new Error('TCG Pocket cards cannot be added to binders')
   }
   const card = createCard(data)
-  // Fetch prices immediately if we have a TCG ID
+  // Fetch cardmarket EUR prices immediately if we have a TCG ID
   if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-')) {
     try {
-      const prices = await fetchCardPrices(card.tcgApiId)
-      if (prices) {
-        updateCardPrices(card.id, prices)
-        return { ...card, ...prices }
+      const [pricing, eurUsdRate] = await Promise.all([
+        getFullCardPricing(card.tcgApiId),
+        fetchEurUsdRate(),
+      ])
+      const hasEur = pricing?.cardmarket?.trend != null || pricing?.cardmarket?.avg != null || pricing?.cardmarket?.avg7 != null
+      if (pricing && hasEur) {
+        updateCardPricesFull(card.id, pricing, card.condition, eurUsdRate)
+        return require('./db').getCardsByIds([card.id])[0] ?? card
       }
     } catch { /* price fetch failed, return card without prices */ }
   }
@@ -276,8 +289,9 @@ ipcMain.handle('cards:delete', (_, id) => {
 
 ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
   const { getCardsForRefresh, updateCardPricesFull } = require('./db')
-  const { getFullCardPricing } = require('./tcg')
+  const { getFullCardPricing, fetchEurUsdRate } = require('./tcg')
 
+  const eurUsdRate = await fetchEurUsdRate()
   const cards = getCardsForRefresh(binderId)
   let updated = 0
   for (let i = 0; i < cards.length; i++) {
@@ -285,8 +299,9 @@ ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
     event.sender.send('prices:progress', { current: i, total: cards.length, name: card.name })
     try {
       const pricing = await getFullCardPricing(card.tcgApiId)
-      if (pricing?.bestMarket != null) {
-        updateCardPricesFull(card.id, pricing, card.condition)
+      const hasEur = pricing?.cardmarket?.trend != null || pricing?.cardmarket?.avg != null || pricing?.cardmarket?.avg7 != null
+      if (pricing && hasEur) {
+        updateCardPricesFull(card.id, pricing, card.condition, eurUsdRate)
         updated++
       }
     } catch { /* skip failed cards */ }
@@ -358,7 +373,7 @@ function setupAutoUpdater() {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update available',
-      message: 'A new version of Pokemon Binder is downloading in the background.\nIt will install automatically when you close the app.',
+      message: 'A new version of OffDex is downloading in the background.\nIt will install automatically when you close the app.',
       buttons: ['OK'],
     }).catch(() => {})
   })
@@ -399,7 +414,7 @@ app.whenReady().then(() => {
     createWindow()
     setupAutoUpdater()
   } catch (err) {
-    console.error('Failed to start Pokemon Binder:', err)
+    console.error('Failed to start OffDex:', err)
     dialog.showErrorBox('Failed to start', String(err))
     app.quit()
   }

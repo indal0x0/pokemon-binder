@@ -32,7 +32,7 @@ export default function SettingsPage() {
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">About</h2>
             <div className="bg-card border rounded-lg p-4 text-sm text-muted-foreground space-y-1">
-              <p>Pokemon Binder — track and value your collection.</p>
+              <p>OffDex — track and value your collection.</p>
               <p className="text-xs">More links coming soon: GitHub, Discord, support.</p>
             </div>
           </div>

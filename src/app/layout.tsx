@@ -13,7 +13,7 @@ const pressStart2P = Press_Start_2P({
 })
 
 export const metadata: Metadata = {
-  title: 'Pokemon Binder',
+  title: 'OffDex',
   description: 'Track and value your Pokemon card collection',
 }
 

@@ -325,23 +325,26 @@ function updateCardPriceBase(id, priceMarket) {
     .run(priceMarket, priceMarket, now(), id)
 }
 
-function updateCardPricesFull(id, pricing, condition) {
-  const rawMarket = pricing.bestMarket ?? null
-  if (rawMarket == null) return
+function updateCardPricesFull(id, pricing, condition, eurUsdRate) {
+  // Use cardmarket EUR as the sole price source, converted to USD
+  const rate = eurUsdRate ?? 1.10
+  const eurTrend = pricing.cardmarket?.trend ?? pricing.cardmarket?.avg ?? pricing.cardmarket?.avg7 ?? null
+  const rawMarket = eurTrend != null ? Math.round(eurTrend * rate * 100) / 100 : null
+  if (rawMarket == null) return  // no cardmarket EUR data — skip update
   const multiplier = condition ? (CONDITION_MULTIPLIERS[condition] ?? 1.0) : 1.0
   const adjustedMarket = Math.round(rawMarket * multiplier * 100) / 100
-  const bestVariant = pricing.variants?.find(v => v.market === rawMarket)
-    ?? pricing.variants?.[0] ?? null
+  const eurLow = pricing.cardmarket?.low ?? null
+  const priceLow = eurLow != null ? Math.round(eurLow * rate * 100) / 100 : null
   db.prepare(`
     UPDATE binder_cards SET
       priceLow = ?, priceMid = ?, priceMarket = ?, priceHigh = ?,
       priceUpdatedAt = ?, updatedAt = ?, priceBase = ?
     WHERE id = ?
   `).run(
-    bestVariant?.low ?? null,
-    bestVariant?.mid ?? null,
+    priceLow,
+    null,
     adjustedMarket,
-    bestVariant?.high ?? null,
+    null,
     new Date().toISOString(),
     now(),
     rawMarket,

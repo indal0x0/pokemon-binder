@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Check, Loader2 } from 'lucide-react'
+import { Search, Plus, Check, Loader2, SlidersHorizontal } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
@@ -25,6 +25,9 @@ export default function BrowsePage() {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   const [cardPrices, setCardPrices] = useState<Record<string, FullCardPricing | null | undefined>>({})
   const [filterHasPrice, setFilterHasPrice] = useState(false)
+  const [filterNoImage, setFilterNoImage] = useState(false)
+  const [sortMode, setSortMode] = useState<'default' | 'newest' | 'oldest' | 'price-high' | 'price-low'>('default')
+  const [showSortFilter, setShowSortFilter] = useState(false)
   const [selectedBrowseCard, setSelectedBrowseCard] = useState<TcgCardResult | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -137,17 +140,56 @@ export default function BrowsePage() {
       )}
 
       {results.length > 0 && (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="mb-4 border rounded-lg px-3 py-2">
           <button
-            onClick={() => setFilterHasPrice(v => !v)}
-            className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-              filterHasPrice
-                ? 'bg-primary/10 border-primary/40 text-primary'
-                : 'border-border/50 text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => setShowSortFilter(v => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Has price
+            <SlidersHorizontal className="h-3 w-3" />
+            Sort &amp; Filter
+            {(sortMode !== 'default' || filterHasPrice || filterNoImage) && (
+              <span className="ml-1 px-1.5 py-0 rounded-full bg-primary/20 text-primary text-[10px]">active</span>
+            )}
           </button>
+          {showSortFilter && (
+            <div className="mt-2 space-y-2">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Sort</p>
+                <div className="flex flex-wrap gap-1">
+                  {(['default', 'newest', 'oldest', 'price-high', 'price-low'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setSortMode(mode)}
+                      className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                        sortMode === mode
+                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          : 'border-border/50 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {{ default: 'Default', newest: 'Newest First', oldest: 'Oldest First', 'price-high': 'Price: High → Low', 'price-low': 'Price: Low → High' }[mode]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Filter</p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setFilterHasPrice(v => !v)}
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${filterHasPrice ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Has price
+                  </button>
+                  <button
+                    onClick={() => setFilterNoImage(v => !v)}
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${filterNoImage ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Has image
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -163,12 +205,18 @@ export default function BrowsePage() {
       )}
 
       {results.length > 0 && (() => {
-        const displayed = filterHasPrice
-          ? results.filter(c => {
-              const p = cardPrices[c.tcgApiId]
-              return p !== undefined && p !== null && (p.bestMarket ?? 0) > 0
-            })
-          : results
+        let displayed = [...results]
+        if (filterHasPrice) displayed = displayed.filter(c => {
+          const p = cardPrices[c.tcgApiId]
+          return p !== undefined && p !== null && (p.bestMarket ?? 0) > 0
+        })
+        if (filterNoImage) displayed = displayed.filter(c => !!c.imageUrl)
+        switch (sortMode) {
+          case 'newest': displayed.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
+          case 'oldest': displayed.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
+          case 'price-high': displayed.sort((a, b) => (cardPrices[b.tcgApiId]?.bestMarket ?? b.priceMarket ?? -1) - (cardPrices[a.tcgApiId]?.bestMarket ?? a.priceMarket ?? -1)); break
+          case 'price-low': displayed.sort((a, b) => (cardPrices[a.tcgApiId]?.bestMarket ?? a.priceMarket ?? 99999) - (cardPrices[b.tcgApiId]?.bestMarket ?? b.priceMarket ?? 99999)); break
+        }
         return (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {displayed.map(card => {

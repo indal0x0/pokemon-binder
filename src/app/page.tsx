@@ -38,7 +38,7 @@ export default function HomePage() {
             <Menu className="h-4 w-4" />
           </button>
           <div>
-          <h1 className="text-2xl font-bold tracking-tight shimmer-text">Pokemon Binder</h1>
+          <h1 className="text-2xl font-bold tracking-tight shimmer-text">OffDex</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Track and value your collection
             {binders.length > 0 && (

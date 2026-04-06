@@ -11,22 +11,22 @@ function drandRange(seed: number, min: number, max: number) { return min + drand
 const COUNTS: Record<BgAnimation, number> = {
   none:      0,
   gradient:  0,
-  sparkles:  120,
+  sparkles:  160,
   fire:      90,
   water:     80,
   electric:  50,
   leaves:    70,
-  snow:      110,
+  snow:      150,
   stars:     0,   // handled by StarCanvas
   rain:      130,
-  fireflies: 60,
+  fireflies: 95,
   aurora:    8,
-  pokeballs: 30,
+  pokeballs: 55,
   matrix:    40,
   bubbles:   70,
   galaxy:    0,   // handled by StarCanvas
   waves:     12,
-  confetti:  90,
+  confetti:  130,
   fog:       10,
 }
 
@@ -36,7 +36,7 @@ function makeParticles(anim: BgAnimation) {
     id: i,
     left:     drandRange(i * 7 + 1, 0, 100),
     top:      drandRange(i * 7 + 2, 0, 100),
-    delay:    drandRange(i * 7 + 3, 0, 10),
+    delay:    drandRange(i * 7 + 3, 0, 2.5),
     duration: drandRange(i * 7 + 4, 3, 14),
     size:     drandRange(i * 7 + 5, 0.3, 1.6),
     hue:      drandRange(i * 7 + 6, 0, 1),
