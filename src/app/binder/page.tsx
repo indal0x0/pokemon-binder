@@ -12,7 +12,7 @@ import { BinderActions } from '@/components/BinderActions'
 import { BinderCover } from '@/components/BinderCover'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 import { PagesGallery } from '@/components/PagesGallery'
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderRow, PageRow, CardRow } from '@/types/electron'
@@ -140,7 +140,9 @@ function BinderPageInner() {
   const saveDisabled = coverSaving || (cover.mode === 'image' && !cover.imageFile && !binder.coverImagePath)
 
   return (
-    <main className="min-h-screen p-6 max-w-5xl mx-auto">
+    <div className="min-h-screen">
+      <NavBar backHref="/" />
+      <main className="p-6 max-w-5xl mx-auto">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
         <Link href="/" className="hover:text-foreground transition-colors">Binders</Link>
@@ -199,8 +201,7 @@ function BinderPageInner() {
             </div>
           )}
         </div>
-        <ThemeSwitcher />
-        <BinderActions binderId={binder.id} onRefresh={load} />
+        <BinderActions binderId={binder.id} cards={binder.cards} onRefresh={load} />
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -245,6 +246,7 @@ function BinderPageInner() {
         </DialogContent>
       </Dialog>
     </main>
+    </div>
   )
 }
 

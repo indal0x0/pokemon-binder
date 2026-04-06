@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Search, Plus, Check, Loader2 } from 'lucide-react'
+import { Search, Plus, Check, Loader2 } from 'lucide-react'
+import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import type { TcgCardResult, PageRow, FullCardPricing } from '@/types/electron'
@@ -107,15 +107,12 @@ export default function BrowsePage() {
     : '/'
 
   return (
-    <main className="min-h-screen p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href={backHref} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold">Card Browser</h1>
-          <p className="text-sm text-muted-foreground">Search 20,000+ Pokemon cards</p>
-        </div>
+    <div className="min-h-screen">
+      <NavBar backHref={backHref} />
+      <main className="p-6 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold">Card Browser</h1>
+        <p className="text-sm text-muted-foreground">Search 20,000+ Pokemon cards</p>
       </div>
 
       <div className="relative mb-6">
@@ -245,5 +242,6 @@ export default function BrowsePage() {
         )
       })()}
     </main>
+    </div>
   )
 }

@@ -20,6 +20,8 @@ import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { formatCurrency } from '@/lib/utils'
+import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
+import { NavBar } from '@/components/NavBar'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -68,6 +70,7 @@ function PageDetailInner() {
   const [hasMore, setHasMore] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState(false)
+  const [addProgress, setAddProgress] = useState(0)
   const [searchPrices, setSearchPrices] = useState<Record<string, FullCardPricing | null>>({})
   const [fetchingPrices, setFetchingPrices] = useState(false)
 
@@ -183,7 +186,10 @@ function PageDetailInner() {
   async function addSelectedCards() {
     if (!window.electronAPI || selectedCards.size === 0 || !page) return
     setAdding(true)
+    setAddProgress(0)
     const toAdd = searchResults.filter(c => selectedCards.has(c.tcgApiId))
+    const totalToAdd = toAdd.length
+    let addedCount = 0
     const capacity = page.cols * page.rows
     const freeSlots = Math.max(0, capacity - cards.length)
     const fitsNow = toAdd.slice(0, freeSlots)
@@ -206,6 +212,8 @@ function PageDetailInner() {
           tradeList: 0,
           position: nextPos++,
         } as Parameters<typeof window.electronAPI.createCard>[0])
+        addedCount++
+        setAddProgress(Math.round((addedCount / totalToAdd) * 100))
       }
 
       if (overflow.length > 0) {
@@ -238,6 +246,8 @@ function PageDetailInner() {
               tradeList: 0,
               position: i,
             } as Parameters<typeof window.electronAPI.createCard>[0])
+            addedCount++
+            setAddProgress(Math.round((addedCount / totalToAdd) * 100))
           }
         }
         toast.success(`Added ${toAdd.length} card${toAdd.length !== 1 ? 's' : ''} — ${overflow.length} spilled onto ${pageCount} new page${pageCount !== 1 ? 's' : ''}`)
@@ -254,6 +264,7 @@ function PageDetailInner() {
       toast.error('Failed to add cards')
     } finally {
       setAdding(false)
+      setAddProgress(0)
     }
   }
 
@@ -421,6 +432,9 @@ function PageDetailInner() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      <div className="flex-shrink-0">
+        <NavBar backHref={`/binder?id=${page.binderId || binderId}`} />
+      </div>
       {/* Header */}
       <div className="border-b bg-background z-10 flex-shrink-0">
         <div className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -741,14 +755,21 @@ function PageDetailInner() {
             </div>
 
             {/* Footer */}
-            <div className="px-3 py-3 border-t bg-background">
+            <div className="px-3 py-3 border-t bg-background space-y-2">
+              {adding && (
+                <Progress value={addProgress} className="gap-0">
+                  <ProgressTrack className="h-1.5">
+                    <ProgressIndicator />
+                  </ProgressTrack>
+                </Progress>
+              )}
               <Button
                 className="w-full"
                 disabled={selectedCards.size === 0 || adding}
                 onClick={addSelectedCards}
               >
                 {adding ? (
-                  <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Adding...</>
+                  <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Adding {addProgress}%</>
                 ) : selectedCards.size === 0 ? (
                   'Select cards to add'
                 ) : (
@@ -764,7 +785,7 @@ function PageDetailInner() {
       <Dialog open={editDimsOpen} onOpenChange={open => !open && setEditDimsOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Grid Size</DialogTitle>
+            <DialogTitle>Edit grid size</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -813,7 +834,7 @@ function PageDetailInner() {
             </div>
             {overflowCount > 0 && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                {overflowCount} card{overflowCount !== 1 ? 's' : ''} won&apos;t fit and will be moved to a new page automatically.
+                {overflowCount} card{overflowCount !== 1 ? 's' : ''}{' '}won&apos;t fit and will be moved to a new overflow page automatically.
               </div>
             )}
           </div>

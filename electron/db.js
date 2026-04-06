@@ -86,6 +86,7 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binders ADD COLUMN coverPattern TEXT`,
     `ALTER TABLE binders ADD COLUMN coverPreset TEXT`,
     `ALTER TABLE binder_cards ADD COLUMN year INTEGER`,
+    `ALTER TABLE binder_cards ADD COLUMN priceBase REAL`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -278,12 +279,40 @@ function getCardsForRefresh(binderId) {
   `).all(binderId)
 }
 
+const CONDITION_MULTIPLIERS = { NM: 1.0, LP: 0.8, MP: 0.6, HP: 0.4, DMG: 0.2 }
+
 function updateCardPrices(id, prices) {
+  // Set priceBase only if not already set (preserves user-set condition adjustments)
   db.prepare(`
     UPDATE binder_cards SET
-      priceLow = ?, priceMid = ?, priceMarket = ?, priceHigh = ?, priceUpdatedAt = ?, updatedAt = ?
+      priceLow = ?, priceMid = ?, priceMarket = ?, priceHigh = ?, priceUpdatedAt = ?, updatedAt = ?,
+      priceBase = CASE WHEN priceBase IS NULL THEN ? ELSE priceBase END
     WHERE id = ?
-  `).run(prices.priceLow, prices.priceMid, prices.priceMarket, prices.priceHigh, prices.priceUpdatedAt, now(), id)
+  `).run(prices.priceLow, prices.priceMid, prices.priceMarket, prices.priceHigh, prices.priceUpdatedAt, now(), prices.priceMarket ?? null, id)
+}
+
+function updateCardPriceBase(id, priceMarket) {
+  // Explicitly set priceBase (used after TCGPlayer scrape to reset base)
+  db.prepare(`UPDATE binder_cards SET priceBase = ?, priceMarket = ?, updatedAt = ? WHERE id = ?`)
+    .run(priceMarket, priceMarket, now(), id)
+}
+
+function updateCardCondition(id, condition) {
+  const card = db.prepare('SELECT priceBase, priceMarket FROM binder_cards WHERE id = ?').get(id)
+  if (!card) return
+  const base = card.priceBase ?? card.priceMarket
+  const multiplier = condition ? (CONDITION_MULTIPLIERS[condition] ?? 1.0) : 1.0
+  const newPrice = base != null ? Math.round(base * multiplier * 100) / 100 : null
+  db.prepare(`
+    UPDATE binder_cards SET condition = ?, priceMarket = ?, priceBase = COALESCE(priceBase, ?), updatedAt = ? WHERE id = ?
+  `).run(condition ?? null, newPrice, base ?? null, now(), id)
+  return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
+}
+
+function getCardsByIds(ids) {
+  if (!ids || ids.length === 0) return []
+  const placeholders = ids.map(() => '?').join(',')
+  return db.prepare(`SELECT * FROM binder_cards WHERE id IN (${placeholders})`).all(...ids)
 }
 
 function reorderPageCards(pageId, positions) {
@@ -307,6 +336,7 @@ module.exports = {
   initDb,
   getBinders, getBinderById, createBinder, updateBinder, deleteBinder,
   getPages, getPageById, createPage, updatePage, deletePage, reorderPages,
-  getCards, createCard, updateCard, deleteCard, getCardsForRefresh, updateCardPrices,
+  getCards, createCard, updateCard, deleteCard, getCardsForRefresh,
+  updateCardPrices, updateCardPriceBase, updateCardCondition, getCardsByIds,
   reorderPageCards, moveCard,
 }

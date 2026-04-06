@@ -246,7 +246,16 @@ ipcMain.handle('cards:create', async (_, data) => {
 })
 
 ipcMain.handle('cards:update', (_, id, data) => {
-  const { updateCard } = require('./db')
+  const { updateCard, updateCardCondition } = require('./db')
+  if ('condition' in data) {
+    // Recalculate priceMarket based on condition multiplier
+    const updated = updateCardCondition(id, data.condition)
+    // Apply any other fields too if present
+    const rest = { ...data }
+    delete rest.condition
+    if (Object.keys(rest).length > 0) return updateCard(id, rest) ?? updated
+    return updated
+  }
   return updateCard(id, data)
 })
 
@@ -256,13 +265,15 @@ ipcMain.handle('cards:delete', (_, id) => {
   return true
 })
 
-ipcMain.handle('cards:refresh-prices', async (_, binderId) => {
+ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
   const { getCardsForRefresh, updateCardPrices } = require('./db')
   const { refreshCardPrices } = require('./tcg')
 
   const cards = getCardsForRefresh(binderId)
   let updated = 0
-  for (const card of cards) {
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i]
+    event.sender.send('prices:progress', { current: i, total: cards.length, name: card.name })
     try {
       const prices = await refreshCardPrices(card.tcgApiId)
       if (prices) {
@@ -271,6 +282,7 @@ ipcMain.handle('cards:refresh-prices', async (_, binderId) => {
       }
     } catch { /* skip failed cards */ }
   }
+  event.sender.send('prices:progress', { current: cards.length, total: cards.length, name: '' })
   return { updated }
 })
 
@@ -324,6 +336,18 @@ ipcMain.handle('tcg:scrape-binder-prices', async (_, binderId) => {
   const { getCardsForRefresh } = require('./db')
   const { scrapeBatchPrices } = require('./tcgplayer')
   return scrapeBatchPrices(store, getCardsForRefresh(binderId))
+})
+
+ipcMain.handle('tcg:scrape-selected', async (event, cardIds) => {
+  const { getCardsByIds, updateCardPriceBase } = require('./db')
+  const { scrapeSelectedCards } = require('./tcgplayer')
+  const cards = getCardsByIds(cardIds)
+  return scrapeSelectedCards(cards, (progress, price, cardId) => {
+    event.sender.send('tcg:scrape-progress', progress)
+    if (price != null && cardId) {
+      updateCardPriceBase(cardId, price)
+    }
+  })
 })
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────

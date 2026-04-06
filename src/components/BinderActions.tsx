@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,28 +11,57 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
+import { RefreshCw, Trash2, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { TcgScraperModal } from './TcgScraperModal'
+import type { CardRow } from '@/types/electron'
 
-export function BinderActions({ binderId, onRefresh }: { binderId: string; onRefresh: () => void }) {
+export function BinderActions({
+  binderId,
+  cards,
+  onRefresh,
+}: {
+  binderId: string
+  cards: CardRow[]
+  onRefresh: () => void
+}) {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshProgress, setRefreshProgress] = useState(0)
+  const [refreshLabel, setRefreshLabel] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [scraperOpen, setScraperOpen] = useState(false)
 
-  async function refreshPrices() {
+  // Register progress listener for price refresh
+  useEffect(() => {
+    if (!window.electronAPI?.onPricesProgress) return
+    const unsub = window.electronAPI.onPricesProgress(({ current, total, name }) => {
+      const pct = total > 0 ? Math.round((current / total) * 100) : 0
+      setRefreshProgress(pct)
+      setRefreshLabel(name)
+    })
+    return unsub
+  }, [])
+
+  const refreshPrices = useCallback(async () => {
     if (!window.electronAPI) return
     setRefreshing(true)
+    setRefreshProgress(0)
+    setRefreshLabel('')
     try {
       const data = await window.electronAPI.refreshPrices(binderId)
-      toast.success(`Updated prices for ${data.updated} cards`)
+      toast.success(`Updated prices for ${data.updated} card${data.updated !== 1 ? 's' : ''}`)
       onRefresh()
     } catch {
       toast.error('Failed to refresh prices')
     } finally {
       setRefreshing(false)
+      setRefreshProgress(0)
+      setRefreshLabel('')
     }
-  }
+  }, [binderId, onRefresh])
 
   async function deleteBinder() {
     if (!window.electronAPI) return
@@ -49,21 +78,60 @@ export function BinderActions({ binderId, onRefresh }: { binderId: string; onRef
 
   return (
     <>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={refreshPrices} disabled={refreshing}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh Prices'}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setConfirmOpen(true)}
-          disabled={deleting}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshPrices}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh Prices'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScraperOpen(true)}
+            disabled={refreshing}
+            title="Scrape more accurate prices from TCGPlayer"
+          >
+            <Search className="h-3.5 w-3.5 mr-1.5" />
+            Scrape TCGPlayer
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={deleting}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {refreshing && (
+          <div className="flex flex-col gap-1">
+            <Progress value={refreshProgress} className="gap-0">
+              <ProgressTrack className="h-1.5">
+                <ProgressIndicator />
+              </ProgressTrack>
+            </Progress>
+            {refreshLabel && (
+              <p className="text-[10px] text-muted-foreground truncate max-w-[220px]">
+                {refreshLabel}
+              </p>
+            )}
+          </div>
+        )}
       </div>
+
+      <TcgScraperModal
+        open={scraperOpen}
+        cards={cards}
+        onClose={() => setScraperOpen(false)}
+        onDone={() => { setScraperOpen(false); onRefresh() }}
+      />
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

@@ -51,6 +51,7 @@ export interface CardRow {
   priceMid: number | null
   priceMarket: number | null
   priceHigh: number | null
+  priceBase: number | null
   priceUpdatedAt: string | null
   quantity: number
   condition: string | null
@@ -137,6 +138,10 @@ interface ElectronAPI {
   uploadImage(binderId: string, file: File): Promise<string>
   searchTcg(query: string, page?: number): Promise<TcgSearchResult>
   getImageUrl(imagePath: string | null): string | null
+
+  scrapeSelectedCards(cardIds: string[]): Promise<{ updated: number }>
+  onScrapeProgress(cb: (data: { current: number; total: number; name: string }) => void): () => void
+  onPricesProgress(cb: (data: { current: number; total: number; name: string }) => void): () => void
 }
 
 declare global {

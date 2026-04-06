@@ -194,16 +194,21 @@ export function PagesGallery({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {pages.map((page, index) => {
-              const imageUrl = window.electronAPI?.getImageUrl(page.imagePath || null)
+              // Custom thumbnail takes priority over first-card image
+              const customThumbUrl = page.imagePath
+                ? page.imagePath.startsWith('http')
+                  ? page.imagePath
+                  : window.electronAPI?.getImageUrl(page.imagePath) ?? null
+                : null
               return (
                 <div key={page.id} className="relative group rounded-lg border bg-card overflow-hidden hover:scale-[1.03] hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                   <Link href={`/page-detail?id=${page.id}&binderId=${binderId}`}>
-                    {page.firstCardImageUrl ? (
+                    {customThumbUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={customThumbUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
+                    ) : page.firstCardImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={page.firstCardImageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
-                    ) : imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
                     ) : (
                       <div className="w-full aspect-[3/4] relative overflow-hidden bg-card"
                         style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 18%, transparent), var(--color-card))' }}>

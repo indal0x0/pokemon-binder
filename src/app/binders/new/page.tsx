@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { NavBar } from '@/components/NavBar'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 
 export default function NewBinderPage() {
@@ -45,10 +44,9 @@ export default function NewBinderPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 max-w-lg mx-auto">
-      <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back
-      </Link>
+    <div className="min-h-screen">
+      <NavBar backHref="/" />
+      <main className="p-6 max-w-lg mx-auto">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">New Binder</CardTitle>
@@ -85,5 +83,6 @@ export default function NewBinderPage() {
         </CardContent>
       </Card>
     </main>
+    </div>
   )
 }

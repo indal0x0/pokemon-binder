@@ -11,8 +11,9 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function fetchTCGPlayerPrice(name, setName) {
+async function fetchTCGPlayerPrice(name, setName, collectorNumber) {
   try {
+    const query = collectorNumber ? `${name} ${collectorNumber}` : name
     const body = JSON.stringify({
       algorithm: 'sales_synonym_v2',
       from: 0,
@@ -32,7 +33,7 @@ async function fetchTCGPlayerPrice(name, setName) {
       settings: { useFuzzySearch: true },
       sort: {},
       aggregations: ['listingType'],
-      query: name,
+      query,
     })
 
     const resp = await fetch(SEARCH_URL, {
@@ -61,6 +62,27 @@ async function fetchTCGPlayerPrice(name, setName) {
   }
 }
 
+async function scrapeSelectedCards(cards, onProgress) {
+  let updated = 0
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i]
+    onProgress({ current: i, total: cards.length, name: card.name }, null, null)
+    try {
+      const price = await fetchTCGPlayerPrice(card.name, card.setName, card.collectorNumber)
+      if (price) {
+        onProgress({ current: i + 1, total: cards.length, name: card.name }, price.market, card.id)
+        updated++
+      } else {
+        onProgress({ current: i + 1, total: cards.length, name: card.name }, null, null)
+      }
+    } catch {
+      onProgress({ current: i + 1, total: cards.length, name: card.name }, null, null)
+    }
+    await sleep(RATE_MS)
+  }
+  return { updated }
+}
+
 async function scrapeBatchPrices(store, cards) {
   const cache = store.get('tcgp_price_cache', {})
   const now = Date.now()
@@ -87,4 +109,4 @@ async function scrapeBatchPrices(store, cards) {
   return { updated, skipped: cards.length - stale.length }
 }
 
-module.exports = { scrapeBatchPrices }
+module.exports = { scrapeBatchPrices, scrapeSelectedCards }
