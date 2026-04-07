@@ -71,6 +71,7 @@ export interface TcgCardResult {
   rarity: string | null
   imageUrl: string | null
   year: number | null
+  isPocket?: boolean
   priceLow: number | null
   priceMid: number | null
   priceMarket: number | null

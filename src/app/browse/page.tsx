@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Check, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, Check, Loader2, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
@@ -21,31 +21,32 @@ export default function BrowsePage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TcgCardResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [browsePage, setBrowsePage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const currentQueryRef = useRef('')
   const [addingId, setAddingId] = useState<string | null>(null)
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   const [cardPrices, setCardPrices] = useState<Record<string, FullCardPricing | null | undefined>>({})
   const [filterHasPrice, setFilterHasPrice] = useState(false)
   const [filterNoImage, setFilterNoImage] = useState(false)
+  const [filterPocket, setFilterPocket] = useState(false)
   const [sortMode, setSortMode] = useState<'default' | 'newest' | 'oldest' | 'price-high' | 'price-low'>('default')
   const [showSortFilter, setShowSortFilter] = useState(false)
   const [selectedBrowseCard, setSelectedBrowseCard] = useState<TcgCardResult | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
-      setResults([])
-      setCardPrices({})
-      return
-    }
-    // Clear any pending price fetches from previous search
+  const loadPage = useCallback(async (q: string, page: number) => {
+    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) return
     priceTimeoutsRef.current.forEach(t => clearTimeout(t))
     priceTimeoutsRef.current = []
     setCardPrices({})
     setSearching(true)
     try {
-      const { cards } = await window.electronAPI.searchTcg(q.trim())
+      const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), page)
       setResults(cards)
+      setHasMore(more)
+      setBrowsePage(page)
       // Stagger price fetches 100ms apart
       cards.forEach((card, i) => {
         const t = setTimeout(async () => {
@@ -64,6 +65,18 @@ export default function BrowsePage() {
       setSearching(false)
     }
   }, [])
+
+  const search = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
+      setResults([])
+      setCardPrices({})
+      setHasMore(false)
+      setBrowsePage(1)
+      return
+    }
+    currentQueryRef.current = q.trim()
+    await loadPage(q, 1)
+  }, [loadPage])
 
   function handleQueryChange(value: string) {
     setQuery(value)
@@ -147,7 +160,7 @@ export default function BrowsePage() {
           >
             <SlidersHorizontal className="h-3 w-3" />
             Sort &amp; Filter
-            {(sortMode !== 'default' || filterHasPrice || filterNoImage) && (
+            {(sortMode !== 'default' || filterHasPrice || filterNoImage || filterPocket) && (
               <span className="ml-1 px-1.5 py-0 rounded-full bg-primary/20 text-primary text-[10px]">active</span>
             )}
           </button>
@@ -186,6 +199,12 @@ export default function BrowsePage() {
                   >
                     Has image
                   </button>
+                  <button
+                    onClick={() => setFilterPocket(v => !v)}
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${filterPocket ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Hide TCG Pocket
+                  </button>
                 </div>
               </div>
             </div>
@@ -211,6 +230,7 @@ export default function BrowsePage() {
           return p !== undefined && p !== null && (p.bestMarket ?? 0) > 0
         })
         if (filterNoImage) displayed = displayed.filter(c => !!c.imageUrl)
+        if (filterPocket) displayed = displayed.filter(c => !c.isPocket)
         switch (sortMode) {
           case 'newest': displayed.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
           case 'oldest': displayed.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
@@ -279,6 +299,26 @@ export default function BrowsePage() {
           </div>
         )
       })()}
+
+      {(browsePage > 1 || hasMore) && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <button
+            onClick={() => loadPage(currentQueryRef.current, browsePage - 1)}
+            disabled={browsePage === 1 || searching}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-4 w-4" />Previous
+          </button>
+          <span className="text-sm text-muted-foreground">Page {browsePage}</span>
+          <button
+            onClick={() => loadPage(currentQueryRef.current, browsePage + 1)}
+            disabled={!hasMore || searching}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Next<ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </main>
 
     {selectedBrowseCard && (
