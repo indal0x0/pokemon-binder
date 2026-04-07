@@ -208,7 +208,15 @@ export function PagesGallery({
                       <img src={customThumbUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
                     ) : page.firstCardImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={page.firstCardImageUrl} alt={page.name} className="w-full aspect-[3/4] object-cover" />
+                      <img
+                        src={
+                          page.firstCardImageUrl.startsWith('http')
+                            ? page.firstCardImageUrl
+                            : (window.electronAPI?.getImageUrl(page.firstCardImageUrl) ?? page.firstCardImageUrl)
+                        }
+                        alt={page.name}
+                        className="w-full aspect-[3/4] object-cover"
+                      />
                     ) : (
                       <div className="w-full aspect-[3/4] relative overflow-hidden bg-card"
                         style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 18%, transparent), var(--color-card))' }}>

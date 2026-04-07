@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:set', settings),
   getUserDataPath: () => ipcRenderer.invoke('app:userData'),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
   // Binders
   listBinders: () => ipcRenderer.invoke('binders:list'),

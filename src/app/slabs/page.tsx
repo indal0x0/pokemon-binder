@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Award, Menu, Plus } from 'lucide-react'
+import { Award, Plus } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { NavBar } from '@/components/NavBar'
-import { NavSidebar } from '@/components/NavSidebar'
 import { SlabCard } from '@/components/SlabCard'
 import { AddSlabModal } from '@/components/AddSlabModal'
 import { SlabDetailModal } from '@/components/SlabDetailModal'
@@ -32,7 +31,6 @@ export default function SlabsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedSlab, setSelectedSlab] = useState<SlabRow | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('recent')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!window.electronAPI) { setLoading(false); return }
@@ -57,19 +55,11 @@ export default function SlabsPage() {
 
   return (
     <>
-      <NavSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="min-h-screen p-6 max-w-6xl mx-auto">
         <NavBar backHref="/" />
 
         <div className="flex items-center justify-between mb-6 mt-4">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              aria-label="Open menu"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
             <h1 className="text-2xl font-bold tracking-tight shimmer-text">Slabs</h1>
           </div>
           <Button size="sm" className="shadow-sm" onClick={() => setAddOpen(true)}>

@@ -134,6 +134,7 @@ ipcMain.handle('settings:set', (_, newSettings) => {
 })
 
 ipcMain.handle('app:userData', () => app.getPath('userData'))
+ipcMain.handle('shell:openExternal', (_, url) => shell.openExternal(url))
 
 // ─── IPC: Binder covers ───────────────────────────────────────────────────────
 

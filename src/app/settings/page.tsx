@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { NavBar } from '@/components/NavBar'
+import { Button } from '@/components/ui/button'
+import { GitBranch } from 'lucide-react'
 
 export default function SettingsPage() {
   const [dataPath, setDataPath] = useState<string | null>(null)
@@ -31,9 +33,25 @@ export default function SettingsPage() {
 
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">About</h2>
-            <div className="bg-card border rounded-lg p-4 text-sm text-muted-foreground space-y-1">
-              <p>OffDex — track and value your collection.</p>
-              <p className="text-xs">More links coming soon: GitHub, Discord, support.</p>
+            <div className="bg-card border rounded-lg p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">OffDex — track and value your collection.</p>
+              <p className="text-xs text-muted-foreground">Created by indal0x0</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.electronAPI?.openExternal('https://github.com/indal0x0/off-dex')}
+                >
+                  <GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                  GitHub
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  Support <span className="ml-1.5 text-[10px] text-muted-foreground">coming soon</span>
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  Donate <span className="ml-1.5 text-[10px] text-muted-foreground">coming soon</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

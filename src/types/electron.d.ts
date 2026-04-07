@@ -124,6 +124,7 @@ interface ElectronAPI {
   getSettings(): Promise<ElectronSettings>
   saveSettings(settings: ElectronSettings): Promise<boolean>
   getUserDataPath(): Promise<string>
+  openExternal(url: string): Promise<void>
 
   listBinders(): Promise<BinderRow[]>
   getBinder(id: string): Promise<(BinderRow & { pages: PageRow[]; cards: CardRow[] }) | null>

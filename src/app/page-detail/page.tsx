@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Search, X, Check, Loader2, LayoutGrid, ChevronLeft, ChevronRight, Trash2, SlidersHorizontal, ZoomIn } from 'lucide-react'
+import { Search, X, Check, Loader2, LayoutGrid, ChevronLeft, ChevronRight, Trash2, SlidersHorizontal, ZoomIn, ImagePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
@@ -288,6 +288,16 @@ function PageDetailInner() {
     }
   }
 
+  async function setPageThumbnail(imageUrl: string) {
+    if (!window.electronAPI || !pageId) return
+    try {
+      await window.electronAPI.updatePage(pageId, { imagePath: imageUrl })
+      toast.success('Thumbnail updated')
+    } catch {
+      toast.error('Failed to update thumbnail')
+    }
+  }
+
   // ─── Drag-and-drop ───────────────────────────────────────────────────────────
 
   function onDragStart(e: React.DragEvent, slotIdx: number) {
@@ -465,7 +475,7 @@ function PageDetailInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-hidden max-w-6xl mx-auto w-full px-6 py-4 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-hidden max-w-6xl mx-auto w-full px-6 py-4 flex flex-col">
         {cards.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
             <LayoutGrid className="h-12 w-12 mb-4 opacity-20" />
@@ -477,7 +487,7 @@ function PageDetailInner() {
           </div>
         ) : (
           <div
-            className="flex-1 grid gap-1.5 overflow-hidden"
+            className="flex-1 min-h-0 grid gap-1.5 overflow-hidden"
             style={{
               gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${rows}, 1fr)`,
@@ -555,6 +565,15 @@ function PageDetailInner() {
                           <ZoomIn className="h-2.5 w-2.5" />
                         </button>
                       )}
+                      {card.imageUrl && (
+                        <button
+                          title="Set as page thumbnail"
+                          onClick={e => { e.stopPropagation(); setPageThumbnail(card.imageUrl!) }}
+                          className="bg-background/80 rounded p-0.5 hover:bg-background"
+                        >
+                          <ImagePlus className="h-2.5 w-2.5" />
+                        </button>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); deleteCard(card.id) }}
                         className="bg-background/80 rounded p-0.5 hover:bg-destructive hover:text-destructive-foreground"
@@ -587,7 +606,7 @@ function PageDetailInner() {
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setPanelOpen(false)} />
-          <div className="relative w-96 h-full bg-background border-l flex flex-col shadow-xl">
+          <div className="relative w-[min(24rem,100vw)] h-full bg-background border-l flex flex-col shadow-xl">
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="font-semibold text-sm">Add Cards</h2>
