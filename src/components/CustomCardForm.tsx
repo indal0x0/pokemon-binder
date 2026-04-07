@@ -24,7 +24,7 @@ interface Props {
 
 export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
   const [name, setName] = useState('')
-  const [setName, setSetName] = useState('')
+  const [cardSetName, setCardSetName] = useState('')
   const [collectorNumber, setCollectorNumber] = useState('')
   const [condition, setCondition] = useState('')
   const [pricePaid, setPricePaid] = useState('')
@@ -42,7 +42,7 @@ export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
 
   function resetForm() {
     setName('')
-    setSetName('')
+    setCardSetName('')
     setCollectorNumber('')
     setCondition('')
     setPricePaid('')
@@ -63,7 +63,7 @@ export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
         pageId,
         tcgApiId: 'custom',
         name: name.trim(),
-        setName: setName.trim() || 'Custom',
+        setName: cardSetName.trim() || 'Custom',
         setId: 'custom',
         collectorNumber: collectorNumber.trim() || '',
         rarity: null,
@@ -137,7 +137,7 @@ export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
         {/* Set name */}
         <div>
           <Label htmlFor="cc-set" className="text-xs text-muted-foreground mb-1 block">Set Name</Label>
-          <Input id="cc-set" value={setName} onChange={e => setSetName(e.target.value)} placeholder="e.g. Base Set" className="h-8 text-sm" />
+          <Input id="cc-set" value={cardSetName} onChange={e => setCardSetName(e.target.value)} placeholder="e.g. Base Set" className="h-8 text-sm" />
         </div>
 
         {/* Card number */}

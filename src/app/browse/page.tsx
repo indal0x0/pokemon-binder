@@ -347,6 +347,7 @@ export default function BrowsePage() {
           tradeList: 0,
           position: null,
           purchasedPrice: null,
+          isCustom: 0,
           createdAt: '',
           updatedAt: '',
         } satisfies CardRow}
