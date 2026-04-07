@@ -187,12 +187,6 @@ async function searchCards(query, page = 1) {
     return { cards: [], hasMore: false }
   }
 
-  // Save raw count before filtering so hasMore is accurate
-  const totalRaw = rawCards.length
-
-  // Filter out TCG Pocket cards (card IDs and set IDs start with "tcgp")
-  rawCards = rawCards.filter(card => !isPocketCard(String(card.id || '')))
-
   // Fetch set info for all unique setIds in parallel
   const uniqueSetIds = [...new Set(rawCards.map(c => extractSetId(c.id)))]
   const setInfos = await Promise.all(uniqueSetIds.map(id => getSetInfo(id)))
@@ -212,6 +206,7 @@ async function searchCards(query, page = 1) {
       rarity: null,
       imageUrl,
       year: setInfo?.year ?? null,
+      isPocket: isPocketCard(String(card.id || '')),
       priceLow: null,
       priceMid: null,
       priceMarket: null,
@@ -220,7 +215,7 @@ async function searchCards(query, page = 1) {
     }
   })
 
-  return { cards, hasMore: totalRaw === PAGE_SIZE }
+  return { cards, hasMore: rawCards.length === PAGE_SIZE }
 }
 
 async function getCardPricesBatch(tcgApiIds) {

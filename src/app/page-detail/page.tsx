@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Search, X, Check, Loader2, LayoutGrid, ChevronRight, Trash2, SlidersHorizontal, ZoomIn } from 'lucide-react'
+import { Search, X, Check, Loader2, LayoutGrid, ChevronLeft, ChevronRight, Trash2, SlidersHorizontal, ZoomIn } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
@@ -65,7 +65,6 @@ function PageDetailInner() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<TcgCardResult[]>([])
   const [searching, setSearching] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [searchPage, setSearchPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
@@ -78,6 +77,7 @@ function PageDetailInner() {
   const [sortMode, setSortMode] = useState<SortMode>('default')
   const [filterUnpriced, setFilterUnpriced] = useState(false)
   const [filterNoImage, setFilterNoImage] = useState(false)
+  const [filterPocket, setFilterPocket] = useState(false)
   const [showSortFilter, setShowSortFilter] = useState(false)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -152,19 +152,27 @@ function PageDetailInner() {
     }
   }, [])
 
-  async function loadMore() {
-    if (!window.electronAPI || loadingMore) return
-    const nextPage = searchPage + 1
-    setLoadingMore(true)
+  async function goToPage(page: number) {
+    if (!window.electronAPI || searching) return
+    setSearching(true)
+    setSearchPrices({})
+    setSelectedCards(new Set())
     try {
-      const { cards, hasMore: more } = await window.electronAPI.searchTcg(currentQueryRef.current, nextPage)
-      setSearchResults(prev => [...prev, ...cards])
+      const { cards, hasMore: more } = await window.electronAPI.searchTcg(currentQueryRef.current, page)
+      setSearchResults(cards)
       setHasMore(more)
-      setSearchPage(nextPage)
+      setSearchPage(page)
+      if (cards.length > 0) {
+        setFetchingPrices(true)
+        window.electronAPI.getCardPricesBatch(cards.map(c => c.tcgApiId))
+          .then(prices => setSearchPrices(prices))
+          .catch(() => {})
+          .finally(() => setFetchingPrices(false))
+      }
     } catch {
-      toast.error('Failed to load more')
+      toast.error('Failed to load page')
     } finally {
-      setLoadingMore(false)
+      setSearching(false)
     }
   }
 
@@ -388,6 +396,7 @@ function PageDetailInner() {
       return market && market > 0
     })
     if (filterNoImage) results = results.filter(c => !!c.imageUrl)
+    if (filterPocket) results = results.filter(c => !c.isPocket)
     switch (sortMode) {
       case 'newest': results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
       case 'oldest': results.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
@@ -611,7 +620,7 @@ function PageDetailInner() {
                 >
                   <SlidersHorizontal className="h-3 w-3" />
                   Sort & Filter
-                  {(sortMode !== 'default' || filterUnpriced || filterNoImage) && (
+                  {(sortMode !== 'default' || filterUnpriced || filterNoImage || filterPocket) && (
                     <span className="ml-1 px-1.5 py-0 rounded-full bg-primary/20 text-primary text-[10px]">active</span>
                   )}
                 </button>
@@ -655,6 +664,14 @@ function PageDetailInner() {
                           }`}
                         >
                           Has image
+                        </button>
+                        <button
+                          onClick={() => setFilterPocket(v => !v)}
+                          className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                            filterPocket ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Hide TCG Pocket
                         </button>
                       </div>
                     </div>
@@ -731,14 +748,24 @@ function PageDetailInner() {
                   </button>
                 )
               })}
-              {hasMore && (
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {loadingMore ? <><Loader2 className="h-3 w-3 animate-spin" />Loading...</> : 'Load more results'}
-                </button>
+              {(searchPage > 1 || hasMore) && (
+                <div className="flex items-center justify-between px-3 py-2 border-t border-border/30">
+                  <button
+                    onClick={() => goToPage(searchPage - 1)}
+                    disabled={searchPage === 1 || searching}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />Prev
+                  </button>
+                  <span className="text-xs text-muted-foreground">Page {searchPage}</span>
+                  <button
+                    onClick={() => goToPage(searchPage + 1)}
+                    disabled={!hasMore || searching}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next<ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </div>
 
