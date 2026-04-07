@@ -75,4 +75,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     if (!imagePath) return null
     return `app://./${imagePath}`
   },
+
+  // Slabs
+  listSlabs: () => ipcRenderer.invoke('slabs:list'),
+  createSlab: (data) => ipcRenderer.invoke('slabs:create', data),
+  updateSlab: (id, data) => ipcRenderer.invoke('slabs:update', id, data),
+  deleteSlab: (id) => ipcRenderer.invoke('slabs:delete', id),
+  uploadSlabImage: async (slabId, file) => {
+    const arrayBuffer = await file.arrayBuffer()
+    return ipcRenderer.invoke('slabs:upload-image', slabId, file.name, arrayBuffer)
+  },
 })

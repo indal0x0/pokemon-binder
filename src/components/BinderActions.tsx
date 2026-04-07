@@ -64,7 +64,7 @@ export function BinderActions({
     setDeleting(true)
     try {
       await window.electronAPI.deleteBinder(binderId)
-      router.push('/')
+      router.push('/binders')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete binder')
       setDeleting(false)

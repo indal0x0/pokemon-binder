@@ -1,3 +1,16 @@
+export interface SlabRow {
+  id: string
+  name: string
+  gradingCompany: string
+  grade: string
+  certNumber: string | null
+  pricePaid: number | null
+  currentPrice: number | null
+  imageUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ElectronSettings {
   // reserved for future settings
 }
@@ -56,6 +69,7 @@ export interface CardRow {
   quantity: number
   condition: string | null
   tradeList: number
+  isCustom: number
   position: number | null
   purchasedPrice: number | null
   createdAt: string
@@ -129,7 +143,7 @@ interface ElectronAPI {
 
   listCards(binderId: string, pageId?: string): Promise<CardRow[]>
   createCard(data: Partial<CardRow>): Promise<CardRow>
-  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null; purchasedPrice?: number | null }): Promise<CardRow>
+  updateCard(id: string, data: { quantity?: number; condition?: string | null; tradeList?: boolean; imageUrl?: string | null; purchasedPrice?: number | null; name?: string; setName?: string; collectorNumber?: string; priceMarket?: number | null; isCustom?: number }): Promise<CardRow>
   uploadCardImage(cardId: string, binderId: string, file: File): Promise<CardRow>
   getCardPrices(tcgApiId: string): Promise<FullCardPricing | null>
   getCardPricesBatch(tcgApiIds: string[]): Promise<Record<string, FullCardPricing | null>>
@@ -142,6 +156,12 @@ interface ElectronAPI {
 
   getEurUsdRate(): Promise<number>
   onPricesProgress(cb: (data: { current: number; total: number; name: string }) => void): () => void
+
+  listSlabs(): Promise<SlabRow[]>
+  createSlab(data: { name: string; gradingCompany: string; grade: string; certNumber?: string | null; pricePaid?: number | null; currentPrice?: number | null; imageUrl?: string | null }): Promise<SlabRow>
+  updateSlab(id: string, data: Partial<{ name: string; gradingCompany: string; grade: string; certNumber: string | null; pricePaid: number | null; currentPrice: number | null; imageUrl: string | null }>): Promise<SlabRow>
+  deleteSlab(id: string): Promise<boolean>
+  uploadSlabImage(slabId: string, file: File): Promise<SlabRow>
 }
 
 declare global {

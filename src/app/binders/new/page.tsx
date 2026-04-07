@@ -45,7 +45,7 @@ export default function NewBinderPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar backHref="/" />
+      <NavBar backHref="/binders" />
       <main className="p-6 max-w-lg mx-auto">
       <Card>
         <CardHeader>

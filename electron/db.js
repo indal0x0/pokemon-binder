@@ -23,6 +23,19 @@ function initDb(Database, dbPath) {
   db.pragma('foreign_keys = ON')
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS slabs (
+      id             TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      gradingCompany TEXT NOT NULL DEFAULT '',
+      grade          TEXT NOT NULL DEFAULT '',
+      certNumber     TEXT,
+      pricePaid      REAL,
+      currentPrice   REAL,
+      imageUrl       TEXT,
+      createdAt      TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS binders (
       id             TEXT PRIMARY KEY,
       name           TEXT NOT NULL,
@@ -88,6 +101,7 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binder_cards ADD COLUMN year INTEGER`,
     `ALTER TABLE binder_cards ADD COLUMN priceBase REAL`,
     `ALTER TABLE binder_cards ADD COLUMN purchasedPrice REAL`,
+    `ALTER TABLE binder_cards ADD COLUMN isCustom INTEGER NOT NULL DEFAULT 0`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -99,6 +113,7 @@ function initDb(Database, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_bc_pageId    ON binder_cards(pageId);
     CREATE INDEX IF NOT EXISTS idx_bc_tcgApiId  ON binder_cards(tcgApiId);
     CREATE INDEX IF NOT EXISTS idx_pages_binder ON pages(binderId);
+    CREATE INDEX IF NOT EXISTS idx_slabs_createdAt ON slabs(createdAt);
   `)
 
   return db
@@ -264,8 +279,8 @@ function createCard(data) {
   db.prepare(`
     INSERT INTO binder_cards
       (id, binderId, pageId, tcgApiId, name, setId, setName, collectorNumber, rarity, imageUrl,
-       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, year, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, year, isCustom, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, data.binderId, data.pageId ?? null, data.tcgApiId, data.name,
     data.setId || 'unknown', data.setName || 'Unknown Set', data.collectorNumber || '',
@@ -275,13 +290,14 @@ function createCard(data) {
     data.quantity ?? 1, data.condition ?? null, data.tradeList ? 1 : 0,
     position,
     data.year ?? null,
+    data.isCustom ? 1 : 0,
     ts, ts
   )
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
 }
 
 function updateCard(id, data) {
-  const { quantity, condition, tradeList, imageUrl, purchasedPrice } = data
+  const { quantity, condition, tradeList } = data
   const parts = [
     'quantity  = COALESCE(?, quantity)',
     'condition = COALESCE(?, condition)',
@@ -289,8 +305,12 @@ function updateCard(id, data) {
     'updatedAt = ?',
   ]
   const params = [quantity ?? null, condition ?? null, tradeList != null ? (tradeList ? 1 : 0) : null, now()]
-  if ('imageUrl' in data) { parts.push('imageUrl = ?'); params.push(imageUrl ?? null) }
-  if ('purchasedPrice' in data) { parts.push('purchasedPrice = ?'); params.push(purchasedPrice ?? null) }
+  // Fields that can be explicitly set or nulled
+  const directFields = ['name', 'setName', 'collectorNumber', 'imageUrl', 'purchasedPrice', 'priceMarket']
+  for (const f of directFields) {
+    if (f in data) { parts.push(`${f} = ?`); params.push(data[f] ?? null) }
+  }
+  if ('isCustom' in data) { parts.push('isCustom = ?'); params.push(data.isCustom ? 1 : 0) }
   params.push(id)
   db.prepare(`UPDATE binder_cards SET ${parts.join(', ')} WHERE id = ?`).run(...params)
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
@@ -303,7 +323,7 @@ function deleteCard(id) {
 function getCardsForRefresh(binderId) {
   return db.prepare(`
     SELECT * FROM binder_cards
-    WHERE binderId = ? AND tcgApiId NOT LIKE 'unmatched-%'
+    WHERE binderId = ? AND tcgApiId NOT LIKE 'unmatched-%' AND isCustom = 0
   `).all(binderId)
 }
 
@@ -353,8 +373,13 @@ function updateCardPricesFull(id, pricing, condition, eurUsdRate) {
 }
 
 function updateCardCondition(id, condition) {
-  const card = db.prepare('SELECT priceBase, priceMarket FROM binder_cards WHERE id = ?').get(id)
+  const card = db.prepare('SELECT priceBase, priceMarket, isCustom FROM binder_cards WHERE id = ?').get(id)
   if (!card) return
+  // Custom cards: just update condition, don't recalculate priceMarket from priceBase
+  if (card.isCustom) {
+    db.prepare('UPDATE binder_cards SET condition = ?, updatedAt = ? WHERE id = ?').run(condition ?? null, now(), id)
+    return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
+  }
   const base = card.priceBase ?? card.priceMarket
   const multiplier = condition ? (CONDITION_MULTIPLIERS[condition] ?? 1.0) : 1.0
   const newPrice = base != null ? Math.round(base * multiplier * 100) / 100 : null
@@ -387,6 +412,48 @@ function moveCard(cardId, pageId, position) {
     .run(pageId, position, now(), cardId)
 }
 
+// ─── Slabs ────────────────────────────────────────────────────────────────────
+
+function getSlabs() {
+  return db.prepare('SELECT * FROM slabs ORDER BY createdAt DESC').all()
+}
+
+function getSlabById(id) {
+  return db.prepare('SELECT * FROM slabs WHERE id = ?').get(id) ?? null
+}
+
+function createSlab(data) {
+  const id = uid()
+  const ts = now()
+  db.prepare(`
+    INSERT INTO slabs (id, name, gradingCompany, grade, certNumber, pricePaid, currentPrice, imageUrl, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, data.name, data.gradingCompany || '', data.grade || '',
+    data.certNumber ?? null, data.pricePaid ?? null, data.currentPrice ?? null,
+    data.imageUrl ?? null, ts, ts
+  )
+  return db.prepare('SELECT * FROM slabs WHERE id = ?').get(id)
+}
+
+function updateSlab(id, data) {
+  const parts = ['updatedAt = ?']
+  const params = [now()]
+  const fields = ['name', 'gradingCompany', 'grade', 'certNumber', 'pricePaid', 'currentPrice', 'imageUrl']
+  for (const f of fields) {
+    if (f in data) { parts.push(`${f} = ?`); params.push(data[f] ?? null) }
+  }
+  params.push(id)
+  db.prepare(`UPDATE slabs SET ${parts.join(', ')} WHERE id = ?`).run(...params)
+  return db.prepare('SELECT * FROM slabs WHERE id = ?').get(id)
+}
+
+function deleteSlab(id) {
+  const slab = db.prepare('SELECT imageUrl FROM slabs WHERE id = ?').get(id)
+  db.prepare('DELETE FROM slabs WHERE id = ?').run(id)
+  return slab?.imageUrl ?? null
+}
+
 module.exports = {
   initDb,
   getBinders, getBinderById, createBinder, updateBinder, deleteBinder,
@@ -394,4 +461,5 @@ module.exports = {
   getCards, createCard, updateCard, deleteCard, getCardsForRefresh,
   updateCardPrices, updateCardPriceBase, updateCardPricesFull, updateCardCondition, getCardsByIds,
   reorderPageCards, moveCard, deletePocketCards,
+  getSlabs, getSlabById, createSlab, updateSlab, deleteSlab,
 }

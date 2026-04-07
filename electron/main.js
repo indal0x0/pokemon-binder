@@ -250,8 +250,8 @@ ipcMain.handle('cards:create', async (_, data) => {
     throw new Error('TCG Pocket cards cannot be added to binders')
   }
   const card = createCard(data)
-  // Fetch cardmarket EUR prices immediately if we have a TCG ID
-  if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-')) {
+  // Fetch cardmarket EUR prices immediately if we have a TCG ID (skip for custom cards)
+  if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-') && !card.isCustom) {
     try {
       const [pricing, eurUsdRate] = await Promise.all([
         getFullCardPricing(card.tcgApiId),
@@ -308,6 +308,43 @@ ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
   }
   event.sender.send('prices:progress', { current: cards.length, total: cards.length, name: '' })
   return { updated }
+})
+
+// ─── IPC: Slabs ───────────────────────────────────────────────────────────────
+
+ipcMain.handle('slabs:list', () => {
+  const { getSlabs } = require('./db')
+  return getSlabs()
+})
+
+ipcMain.handle('slabs:create', (_, data) => {
+  const { createSlab } = require('./db')
+  return createSlab(data)
+})
+
+ipcMain.handle('slabs:update', (_, id, data) => {
+  const { updateSlab } = require('./db')
+  return updateSlab(id, data)
+})
+
+ipcMain.handle('slabs:delete', (_, id) => {
+  const { deleteSlab } = require('./db')
+  const imageUrl = deleteSlab(id)
+  if (imageUrl?.startsWith('uploads/')) {
+    const abs = path.join(app.getPath('userData'), imageUrl)
+    if (fs.existsSync(abs)) fs.unlinkSync(abs)
+  }
+  return true
+})
+
+ipcMain.handle('slabs:upload-image', (_, slabId, filename, arrayBuffer) => {
+  const dir = path.join(app.getPath('userData'), 'uploads', 'slabs')
+  fs.mkdirSync(dir, { recursive: true })
+  const ext = path.extname(filename) || '.jpg'
+  const destPath = path.join(dir, `${slabId}${ext}`)
+  fs.writeFileSync(destPath, Buffer.from(arrayBuffer))
+  const { updateSlab } = require('./db')
+  return updateSlab(slabId, { imageUrl: `uploads/slabs/${slabId}${ext}` })
 })
 
 // ─── IPC: Image upload ────────────────────────────────────────────────────────

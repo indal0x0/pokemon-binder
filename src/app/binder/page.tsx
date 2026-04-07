@@ -84,7 +84,7 @@ function BinderPageInner() {
     if (!binderId || !window.electronAPI) { setLoading(false); return }
     try {
       const data = await window.electronAPI.getBinder(binderId)
-      if (!data) { router.push('/'); return }
+      if (!data) { router.push('/binders'); return }
       setBinder(data)
       setLoading(false)
     } catch { setLoading(false) }
@@ -133,7 +133,7 @@ function BinderPageInner() {
 
   return (
     <div className="min-h-screen">
-      <NavBar backHref="/" />
+      <NavBar backHref="/binders" />
       <main className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <div className="relative group flex-shrink-0 cursor-pointer" onClick={openEditCover}>

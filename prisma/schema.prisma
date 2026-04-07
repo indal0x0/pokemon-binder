@@ -55,10 +55,26 @@ model BinderCard {
   quantity        Int       @default(1)
   condition       String?
   tradeList       Boolean   @default(false)
+  isCustom        Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   binder          Binder    @relation(fields: [binderId], references: [id], onDelete: Cascade)
   page            Page?     @relation(fields: [pageId], references: [id])
 
   @@map("binder_cards")
+}
+
+model Slab {
+  id             String   @id @default(cuid())
+  name           String
+  gradingCompany String   @default("")
+  grade          String   @default("")
+  certNumber     String?
+  pricePaid      Float?
+  currentPrice   Float?
+  imageUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("slabs")
 }

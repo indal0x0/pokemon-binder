@@ -22,6 +22,7 @@ import { ImageLightbox } from '@/components/ImageLightbox'
 import { formatCurrency } from '@/lib/utils'
 import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
 import { NavBar } from '@/components/NavBar'
+import { CustomCardForm } from '@/components/CustomCardForm'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -62,6 +63,7 @@ function PageDetailInner() {
 
   // Slide-in card search panel
   const [panelOpen, setPanelOpen] = useState(false)
+  const [panelTab, setPanelTab] = useState<'search' | 'custom'>('search')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<TcgCardResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -100,7 +102,7 @@ function PageDetailInner() {
     if (!pageId || !window.electronAPI) return
     try {
       const data = await window.electronAPI.getPage(pageId)
-      if (!data) { router.push('/'); return }
+      if (!data) { router.push('/binders'); return }
       setPage(data as PageData)
       setCards(data.cards ?? [])
       setLoading(false)
@@ -589,13 +591,41 @@ function PageDetailInner() {
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="font-semibold text-sm">Add Cards</h2>
-              <button onClick={() => setPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { setPanelOpen(false); setPanelTab('search') }} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
+            {/* Tab switcher */}
+            <div className="flex border-b">
+              <button
+                onClick={() => setPanelTab('search')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${panelTab === 'search' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Search TCG
+              </button>
+              <button
+                onClick={() => setPanelTab('custom')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${panelTab === 'custom' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Custom
+              </button>
+            </div>
+
+            {panelTab === 'custom' && page && (
+              <CustomCardForm
+                binderId={page.binderId}
+                pageId={page.id}
+                onAdd={card => {
+                  setCards(prev => [...prev, card])
+                  setPanelOpen(false)
+                  setPanelTab('search')
+                }}
+              />
+            )}
+
             {/* Search input */}
-            <div className="px-3 py-2 border-b">
+            {panelTab === 'search' && <div className="px-3 py-2 border-b">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
@@ -611,6 +641,7 @@ function PageDetailInner() {
               </div>
             </div>
 
+            {panelTab === 'search' && <>
             {/* Sort + filter controls */}
             {searchResults.length > 0 && (
               <div className="px-3 py-2 border-b">
@@ -792,6 +823,7 @@ function PageDetailInner() {
                 )}
               </Button>
             </div>
+            </>}
           </div>
         </div>
       )}
