@@ -1,6 +1,6 @@
 {
   "name": "offdex",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -28,7 +28,8 @@
     },
     "linux": {
       "target": ["AppImage", "deb"],
-      "category": "Game"
+      "category": "Game",
+      "maintainer": "indal0x0 <indal0x0@users.noreply.github.com>"
     },
     "nsis": {
       "oneClick": true,
