@@ -252,6 +252,18 @@ ipcMain.handle('cards:create', async (_, data) => {
     throw new Error('TCG Pocket cards cannot be added to binders')
   }
   const card = createCard(data)
+  // Fetch One Piece price from cardboard2 immediately on add
+  if (card && card.cardGame === 'onepiece' && !card.isCustom) {
+    try {
+      const { lookupOpCard } = require('./cardboard2')
+      const { updateOpCardPrice } = require('./db')
+      const info = await lookupOpCard(card.tcgApiId)
+      if (info?.priceMarket != null || info?.priceLow != null) {
+        updateOpCardPrice(card.id, info.priceMarket, info.priceLow)
+        return require('./db').getCardsByIds([card.id])[0] ?? card
+      }
+    } catch { /* price fetch failed */ }
+  }
   // Fetch cardmarket EUR prices immediately if we have a TCG ID (skip for custom and One Piece cards)
   if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-') && !card.isCustom && card.cardGame !== 'onepiece') {
     try {
@@ -290,15 +302,20 @@ ipcMain.handle('cards:delete', (_, id) => {
 })
 
 ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
-  const { getCardsForRefresh, updateCardPricesFull } = require('./db')
+  const { getCardsForRefresh, getOpCardsForRefresh, updateCardPricesFull, updateOpCardPrice } = require('./db')
   const { getFullCardPricing, fetchEurUsdRate } = require('./tcg')
+  const { refreshOpPrices } = require('./cardboard2')
 
-  const eurUsdRate = await fetchEurUsdRate()
-  const cards = getCardsForRefresh(binderId)
+  const pokemonCards = getCardsForRefresh(binderId)
+  const opCards = getOpCardsForRefresh(binderId)
+  const allCards = [...pokemonCards, ...opCards]
   let updated = 0
-  for (let i = 0; i < cards.length; i++) {
-    const card = cards[i]
-    event.sender.send('prices:progress', { current: i, total: cards.length, name: card.name })
+
+  // Refresh Pokemon prices (cardmarket EUR)
+  const eurUsdRate = await fetchEurUsdRate()
+  for (let i = 0; i < pokemonCards.length; i++) {
+    const card = pokemonCards[i]
+    event.sender.send('prices:progress', { current: i, total: allCards.length, name: card.name })
     try {
       const pricing = await getFullCardPricing(card.tcgApiId)
       const hasEur = pricing?.cardmarket?.trend != null || pricing?.cardmarket?.avg != null || pricing?.cardmarket?.avg7 != null
@@ -308,7 +325,20 @@ ipcMain.handle('cards:refresh-prices', async (event, binderId) => {
       }
     } catch { /* skip failed cards */ }
   }
-  event.sender.send('prices:progress', { current: cards.length, total: cards.length, name: '' })
+
+  // Refresh One Piece prices (cardboard2)
+  if (opCards.length > 0) {
+    event.sender.send('prices:progress', { current: pokemonCards.length, total: allCards.length, name: 'One Piece cards...' })
+    try {
+      const opUpdates = await refreshOpPrices(opCards)
+      for (const { id, priceMarket, priceLow } of opUpdates) {
+        updateOpCardPrice(id, priceMarket, priceLow)
+        updated++
+      }
+    } catch { /* skip if cardboard2 unreachable */ }
+  }
+
+  event.sender.send('prices:progress', { current: allCards.length, total: allCards.length, name: '' })
   return { updated }
 })
 
@@ -413,6 +443,11 @@ ipcMain.handle('op:search', async (_, query, setId) => {
 ipcMain.handle('op:sets', async () => {
   const { getOnePieceSets } = require('./optcg')
   return getOnePieceSets()
+})
+
+ipcMain.handle('op:card-details', async (_, tcgApiId) => {
+  const { lookupOpCard } = require('./cardboard2')
+  return lookupOpCard(tcgApiId)
 })
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────

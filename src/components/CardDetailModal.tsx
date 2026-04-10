@@ -31,6 +31,12 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
   const [purchasedPriceInput, setPurchasedPriceInput] = useState('')
   const [savingPurchasedPrice, setSavingPurchasedPrice] = useState(false)
+  const [opDetails, setOpDetails] = useState<{
+    card_effect: string | null; cost: string | null; power: string | null
+    attributes: string | null; counter: string | null; card_type: string | null
+    tcgplayer_url: string | null; abilities: string[]
+  } | null>(null)
+  const [loadingOpDetails, setLoadingOpDetails] = useState(false)
   // Custom card editable fields
   const [nameInput, setNameInput] = useState('')
   const [setNameInput2, setSetNameInput] = useState('')
@@ -43,9 +49,18 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   const isOnePiece = card?.cardGame === 'onepiece'
 
   useEffect(() => {
+    if (!card || !isOnePiece) { setOpDetails(null); return }
+    setLoadingOpDetails(true)
+    window.electronAPI?.getOpCardDetails(card.tcgApiId)
+      .then(d => setOpDetails(d ?? null))
+      .catch(() => setOpDetails(null))
+      .finally(() => setLoadingOpDetails(false))
+  }, [card?.tcgApiId, isOnePiece])
+
+  useEffect(() => {
     if (!card) { setPricing(null); return }
     if (isCustom) return  // Custom cards have no TCG price data
-    if (isOnePiece) return  // One Piece cards have manual pricing only
+    if (isOnePiece) return  // One Piece cards handled separately above
     if (card.tcgApiId.startsWith('unmatched-')) return
     setLoadingPrices(true)
     setPricing(null)
@@ -300,8 +315,53 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
 
         {/* Bottom section: pricing */}
         <div className="flex-1 overflow-auto p-8 min-h-0">
-          {isCustom || isOnePiece ? (
-            <p className="text-sm text-muted-foreground/50">{isOnePiece ? 'One Piece card — set price manually above' : 'Custom card — no market price data'}</p>
+          {isCustom ? (
+            <p className="text-sm text-muted-foreground/50">Custom card — no market price data</p>
+          ) : isOnePiece ? (
+            loadingOpDetails ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading card details...
+              </div>
+            ) : opDetails ? (
+              <div className="space-y-5">
+                {/* Stats row */}
+                {(opDetails.card_type || opDetails.cost || opDetails.power || opDetails.attributes || opDetails.counter) && (
+                  <div className="flex flex-wrap gap-4">
+                    {opDetails.card_type && (
+                      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Type</p><p className="text-sm font-semibold">{opDetails.card_type}</p></div>
+                    )}
+                    {opDetails.cost && (
+                      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Cost</p><p className="text-sm font-semibold">{opDetails.cost}</p></div>
+                    )}
+                    {opDetails.power && (
+                      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Power</p><p className="text-sm font-semibold">{opDetails.power}</p></div>
+                    )}
+                    {opDetails.attributes && (
+                      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Attribute</p><p className="text-sm font-semibold">{opDetails.attributes}</p></div>
+                    )}
+                    {opDetails.counter && opDetails.counter !== '-' && (
+                      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Counter</p><p className="text-sm font-semibold">{opDetails.counter}</p></div>
+                    )}
+                  </div>
+                )}
+                {/* Card effect text */}
+                {opDetails.card_effect && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">Card Effect</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{opDetails.card_effect}</p>
+                  </div>
+                )}
+                {/* TCGPlayer link */}
+                {opDetails.tcgplayer_url && (
+                  <a href={opDetails.tcgplayer_url} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                    View on TCGPlayer →
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground/50">No card details available</p>
+            )
           ) : loadingPrices ? (
             <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading prices...

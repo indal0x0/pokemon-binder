@@ -329,6 +329,21 @@ function getCardsForRefresh(binderId) {
   `).all(binderId)
 }
 
+function getOpCardsForRefresh(binderId) {
+  return db.prepare(`
+    SELECT * FROM binder_cards
+    WHERE binderId = ? AND isCustom = 0 AND cardGame = 'onepiece'
+  `).all(binderId)
+}
+
+function updateOpCardPrice(id, priceMarket, priceLow) {
+  db.prepare(`
+    UPDATE binder_cards SET
+      priceMarket = ?, priceLow = ?, priceBase = ?, priceUpdatedAt = ?, updatedAt = ?
+    WHERE id = ?
+  `).run(priceMarket, priceLow, priceMarket, new Date().toISOString(), now(), id)
+}
+
 const CONDITION_MULTIPLIERS = { NM: 1.0, LP: 0.8, MP: 0.6, HP: 0.4, DMG: 0.2 }
 
 function updateCardPrices(id, prices) {
