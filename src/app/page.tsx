@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BookOpen, Award, Menu, Settings } from 'lucide-react'
+import { BookOpen, Award, Heart, Menu, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { NavSidebar } from '@/components/NavSidebar'
@@ -38,9 +38,9 @@ export default function LandingPage() {
             <p className="text-muted-foreground text-base">Track and value your collection</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-5 w-full max-w-lg">
+          <div className="grid grid-cols-3 gap-5 w-full max-w-2xl">
             <Link href="/binders">
-              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer flex flex-col items-center gap-4 p-8">
+              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer flex flex-col items-center gap-4 p-6">
                 <div className="rounded-full bg-primary/10 p-4 group-hover:bg-primary/20 transition-colors">
                   <BookOpen className="h-8 w-8 text-primary" />
                 </div>
@@ -52,13 +52,25 @@ export default function LandingPage() {
             </Link>
 
             <Link href="/slabs">
-              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer flex flex-col items-center gap-4 p-8">
+              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer flex flex-col items-center gap-4 p-6">
                 <div className="rounded-full bg-primary/10 p-4 group-hover:bg-primary/20 transition-colors">
                   <Award className="h-8 w-8 text-primary" />
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-base">Slabs</p>
                   <p className="text-muted-foreground text-xs mt-1">Track your graded collection</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/wishlist">
+              <div className="group rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-200 shadow-sm shadow-black/10 cursor-pointer flex flex-col items-center gap-4 p-6">
+                <div className="rounded-full bg-primary/10 p-4 group-hover:bg-primary/20 transition-colors">
+                  <Heart className="h-8 w-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-base">Wishlist</p>
+                  <p className="text-muted-foreground text-xs mt-1">Cards you want to collect</p>
                 </div>
               </div>
             </Link>

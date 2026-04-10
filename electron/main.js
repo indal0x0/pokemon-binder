@@ -450,6 +450,28 @@ ipcMain.handle('op:card-details', async (_, tcgApiId) => {
   return lookupOpCard(tcgApiId)
 })
 
+// ─── IPC: Wishlist ────────────────────────────────────────────────────────────
+
+ipcMain.handle('wishlist:list', () => {
+  const { getWishlistCards } = require('./db')
+  return getWishlistCards()
+})
+
+ipcMain.handle('wishlist:create', (_, data) => {
+  const { createWishlistCard } = require('./db')
+  return createWishlistCard(data)
+})
+
+ipcMain.handle('wishlist:update', (_, id, data) => {
+  const { updateWishlistCard } = require('./db')
+  return updateWishlistCard(id, data)
+})
+
+ipcMain.handle('wishlist:delete', (_, id) => {
+  const { deleteWishlistCard } = require('./db')
+  return deleteWishlistCard(id)
+})
+
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
 
 function setupAutoUpdater() {

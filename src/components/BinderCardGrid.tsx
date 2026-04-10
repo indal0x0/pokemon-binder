@@ -107,11 +107,15 @@ export function BinderCardGrid({
         {visible.map(card => (
           <div
             key={card.id}
-            className="group relative bg-card border border-border/50 rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-black/30 transition-all duration-200 shadow-md shadow-black/20"
+            className={`group relative bg-card border rounded-xl overflow-hidden transition-all duration-200 shadow-md shadow-black/20 ${
+              card.tradeList
+                ? 'border-yellow-400 ring-2 ring-yellow-400/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-400/20'
+                : 'border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-black/30'
+            }`}
           >
             {card.tradeList ? (
-              <div className="absolute top-2 left-2 z-10">
-                <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500 text-white border-0 shadow-sm">
+              <div className="absolute top-2 right-2 z-10">
+                <Badge className="text-[10px] px-1.5 py-0 bg-yellow-400 hover:bg-yellow-400 text-black border-0 shadow-sm font-semibold">
                   Trade
                 </Badge>
               </div>

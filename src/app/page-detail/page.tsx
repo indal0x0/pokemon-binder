@@ -134,6 +134,11 @@ function PageDetailInner() {
     setSelectedSet('')
     setSearchResults([])
     setSearchQuery('')
+    setSortMode('default')
+    setFilterUnpriced(false)
+    setFilterNoImage(false)
+    setFilterPocket(false)
+    setShowSortFilter(false)
     if (gameMode === 'pokemon') {
       window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
     } else {
@@ -748,14 +753,16 @@ function PageDetailInner() {
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Filter</p>
                       <div className="flex gap-1">
-                        <button
-                          onClick={() => setFilterUnpriced(v => !v)}
-                          className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-                            filterUnpriced ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Has price
-                        </button>
+                        {gameMode === 'pokemon' && (
+                          <button
+                            onClick={() => setFilterUnpriced(v => !v)}
+                            className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                              filterUnpriced ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Has price
+                          </button>
+                        )}
                         <button
                           onClick={() => setFilterNoImage(v => !v)}
                           className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
@@ -764,14 +771,16 @@ function PageDetailInner() {
                         >
                           Has image
                         </button>
-                        <button
-                          onClick={() => setFilterPocket(v => !v)}
-                          className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-                            filterPocket ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Hide TCG Pocket
-                        </button>
+                        {gameMode === 'pokemon' && (
+                          <button
+                            onClick={() => setFilterPocket(v => !v)}
+                            className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                              filterPocket ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border/50 text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Hide TCG Pocket
+                          </button>
+                        )}
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground/50">{displayedResults.length} of {searchResults.length} shown</p>

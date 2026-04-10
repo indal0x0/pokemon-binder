@@ -84,6 +84,20 @@ function initDb(Database, dbPath) {
       createdAt       TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt       TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS wishlist_cards (
+      id              TEXT PRIMARY KEY,
+      tcgApiId        TEXT NOT NULL,
+      name            TEXT NOT NULL,
+      setId           TEXT NOT NULL DEFAULT '',
+      setName         TEXT NOT NULL DEFAULT '',
+      collectorNumber TEXT NOT NULL DEFAULT '',
+      imageUrl        TEXT,
+      cardGame        TEXT NOT NULL DEFAULT 'pokemon',
+      priority        TEXT NOT NULL DEFAULT 'medium',
+      notes           TEXT,
+      createdAt       TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `)
 
   // Idempotent migrations for older databases
@@ -471,6 +485,42 @@ function deleteSlab(id) {
   return slab?.imageUrl ?? null
 }
 
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+
+function getWishlistCards() {
+  return db.prepare('SELECT * FROM wishlist_cards ORDER BY createdAt DESC').all()
+}
+
+function createWishlistCard(data) {
+  const id = uid()
+  const ts = now()
+  db.prepare(`
+    INSERT INTO wishlist_cards (id, tcgApiId, name, setId, setName, collectorNumber, imageUrl, cardGame, priority, notes, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, data.tcgApiId, data.name, data.setId || '', data.setName || '',
+    data.collectorNumber || '', data.imageUrl ?? null,
+    data.cardGame || 'pokemon', data.priority || 'medium', data.notes ?? null, ts
+  )
+  return db.prepare('SELECT * FROM wishlist_cards WHERE id = ?').get(id)
+}
+
+function updateWishlistCard(id, data) {
+  const parts = []
+  const params = []
+  if ('priority' in data) { parts.push('priority = ?'); params.push(data.priority) }
+  if ('notes' in data) { parts.push('notes = ?'); params.push(data.notes ?? null) }
+  if (parts.length === 0) return db.prepare('SELECT * FROM wishlist_cards WHERE id = ?').get(id)
+  params.push(id)
+  db.prepare(`UPDATE wishlist_cards SET ${parts.join(', ')} WHERE id = ?`).run(...params)
+  return db.prepare('SELECT * FROM wishlist_cards WHERE id = ?').get(id)
+}
+
+function deleteWishlistCard(id) {
+  db.prepare('DELETE FROM wishlist_cards WHERE id = ?').run(id)
+  return true
+}
+
 module.exports = {
   initDb,
   getBinders, getBinderById, createBinder, updateBinder, deleteBinder,
@@ -478,5 +528,7 @@ module.exports = {
   getCards, createCard, updateCard, deleteCard, getCardsForRefresh,
   updateCardPrices, updateCardPriceBase, updateCardPricesFull, updateCardCondition, getCardsByIds,
   reorderPageCards, moveCard, deletePocketCards,
+  getOpCardsForRefresh, updateOpCardPrice,
   getSlabs, getSlabById, createSlab, updateSlab, deleteSlab,
+  getWishlistCards, createWishlistCard, updateWishlistCard, deleteWishlistCard,
 }

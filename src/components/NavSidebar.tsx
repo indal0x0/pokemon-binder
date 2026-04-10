@@ -2,12 +2,13 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { X, Home, Search, Settings, BookOpen, Award } from 'lucide-react'
+import { X, Home, Search, Settings, BookOpen, Award, Heart } from 'lucide-react'
 
 const NAV_LINKS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/binders', label: 'Binders', icon: BookOpen },
   { href: '/slabs', label: 'Slabs', icon: Award },
+  { href: '/wishlist', label: 'Wishlist', icon: Heart },
   { href: '/browse', label: 'Browse Cards', icon: Search },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

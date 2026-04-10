@@ -35,6 +35,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
     card_effect: string | null; cost: string | null; power: string | null
     attributes: string | null; counter: string | null; card_type: string | null
     tcgplayer_url: string | null; abilities: string[]
+    priceMarket: number | null; priceLow: number | null
   } | null>(null)
   const [loadingOpDetails, setLoadingOpDetails] = useState(false)
   // Custom card editable fields
@@ -77,10 +78,13 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
         setNameInput(card.name ?? '')
         setSetNameInput(card.setName ?? '')
         setCollectorNumberInput(card.collectorNumber ?? '')
-        setEstimatedValueInput(card.priceMarket != null ? String(card.priceMarket) : '')
+        setEstimatedValueInput(
+          card.priceMarket != null ? String(card.priceMarket) :
+          opDetails?.priceMarket != null ? String(opDetails.priceMarket) : ''
+        )
       }
     }
-  }, [card?.id])
+  }, [card?.id, opDetails])
 
   // Fetch EUR/USD rate when we have cardmarket data but no USD variants
   useEffect(() => {
@@ -324,6 +328,23 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
               </div>
             ) : opDetails ? (
               <div className="space-y-5">
+                {/* Price */}
+                {(opDetails.priceMarket != null || opDetails.priceLow != null) && (
+                  <div className="flex gap-6">
+                    {opDetails.priceMarket != null && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Market</p>
+                        <p className="text-2xl font-bold text-primary">{formatCurrency(opDetails.priceMarket)}</p>
+                      </div>
+                    )}
+                    {opDetails.priceLow != null && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-0.5">Low</p>
+                        <p className="text-lg font-semibold text-foreground/70">{formatCurrency(opDetails.priceLow)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Stats row */}
                 {(opDetails.card_type || opDetails.cost || opDetails.power || opDetails.attributes || opDetails.counter) && (
                   <div className="flex flex-wrap gap-4">
@@ -451,6 +472,18 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
 
               {!bestMarket && !loadingPrices && (
                 <p className="text-sm text-muted-foreground/50">No price data available</p>
+              )}
+
+              {/* TCGPlayer link for Pokemon */}
+              {!isOnePiece && !isCustom && !card.tcgApiId.startsWith('unmatched-') && (
+                <a
+                  href={`https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(`${card.name} ${card.setName}`)}&view=grid`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
+                >
+                  View on TCGPlayer →
+                </a>
               )}
             </div>
           )}

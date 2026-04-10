@@ -69,6 +69,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // EUR/USD live exchange rate (cached per session)
   getEurUsdRate: () => ipcRenderer.invoke('tcg:get-eur-usd-rate'),
 
+  // Wishlist
+  listWishlistCards: () => ipcRenderer.invoke('wishlist:list'),
+  createWishlistCard: (data) => ipcRenderer.invoke('wishlist:create', data),
+  updateWishlistCard: (id, data) => ipcRenderer.invoke('wishlist:update', id, data),
+  deleteWishlistCard: (id) => ipcRenderer.invoke('wishlist:delete', id),
+
   // Listen for per-card price refresh progress
   onPricesProgress: (cb) => {
     const handler = (_, d) => cb(d)

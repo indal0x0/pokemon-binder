@@ -1,3 +1,17 @@
+export interface WishlistCard {
+  id: string
+  tcgApiId: string
+  name: string
+  setId: string
+  setName: string
+  collectorNumber: string
+  imageUrl: string | null
+  cardGame: string
+  priority: 'high' | 'medium' | 'low'
+  notes: string | null
+  createdAt: string
+}
+
 export interface SlabRow {
   id: string
   name: string
@@ -196,6 +210,11 @@ interface ElectronAPI {
   updateSlab(id: string, data: Partial<{ name: string; gradingCompany: string; grade: string; certNumber: string | null; pricePaid: number | null; currentPrice: number | null; imageUrl: string | null }>): Promise<SlabRow>
   deleteSlab(id: string): Promise<boolean>
   uploadSlabImage(slabId: string, file: File): Promise<SlabRow>
+
+  listWishlistCards(): Promise<WishlistCard[]>
+  createWishlistCard(data: { tcgApiId: string; name: string; setId: string; setName: string; collectorNumber: string; imageUrl?: string | null; cardGame: string; priority?: string; notes?: string | null }): Promise<WishlistCard>
+  updateWishlistCard(id: string, data: { priority?: string; notes?: string | null }): Promise<WishlistCard>
+  deleteWishlistCard(id: string): Promise<boolean>
 }
 
 declare global {
