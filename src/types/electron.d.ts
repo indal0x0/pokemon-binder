@@ -70,10 +70,28 @@ export interface CardRow {
   condition: string | null
   tradeList: number
   isCustom: number
+  cardGame: string
   position: number | null
   purchasedPrice: number | null
   createdAt: string
   updatedAt: string
+}
+
+export interface OnePieceCardResult {
+  tcgApiId: string
+  name: string
+  setId: string
+  setName: string
+  collectorNumber: string
+  rarity: string | null
+  imageUrl: string | null
+  year: null
+  cardGame: 'onepiece'
+  priceLow: null
+  priceMid: null
+  priceMarket: null
+  priceHigh: null
+  priceUpdatedAt: null
 }
 
 export interface TcgCardResult {
@@ -153,6 +171,9 @@ interface ElectronAPI {
 
   uploadImage(binderId: string, file: File): Promise<string>
   searchTcg(query: string, page?: number): Promise<TcgSearchResult>
+  getPokemonSets(): Promise<{ id: string; name: string }[]>
+  searchOptcg(query: string, setId?: string): Promise<{ cards: OnePieceCardResult[]; hasMore: false }>
+  getOptcgSets(): Promise<{ id: string; name: string }[]>
   getImageUrl(imagePath: string | null): string | null
 
   getEurUsdRate(): Promise<number>

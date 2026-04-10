@@ -56,6 +56,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'OffDex',
+    icon: path.join(__dirname, '../build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -251,8 +252,8 @@ ipcMain.handle('cards:create', async (_, data) => {
     throw new Error('TCG Pocket cards cannot be added to binders')
   }
   const card = createCard(data)
-  // Fetch cardmarket EUR prices immediately if we have a TCG ID (skip for custom cards)
-  if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-') && !card.isCustom) {
+  // Fetch cardmarket EUR prices immediately if we have a TCG ID (skip for custom and One Piece cards)
+  if (card && card.tcgApiId && !card.tcgApiId.startsWith('unmatched-') && !card.isCustom && card.cardGame !== 'onepiece') {
     try {
       const [pricing, eurUsdRate] = await Promise.all([
         getFullCardPricing(card.tcgApiId),
@@ -392,9 +393,26 @@ ipcMain.handle('tcg:search', async (_, query, page = 1) => {
   return searchCards(query, page)
 })
 
+ipcMain.handle('tcg:sets', async () => {
+  const { getPokemonSets } = require('./tcg')
+  return getPokemonSets()
+})
+
 ipcMain.handle('tcg:get-eur-usd-rate', async () => {
   const { fetchEurUsdRate } = require('./tcg')
   return fetchEurUsdRate()
+})
+
+// ─── IPC: One Piece card search ───────────────────────────────────────────────
+
+ipcMain.handle('op:search', async (_, query, setId) => {
+  const { searchOnePieceCards } = require('./optcg')
+  return searchOnePieceCards(query, setId)
+})
+
+ipcMain.handle('op:sets', async () => {
+  const { getOnePieceSets } = require('./optcg')
+  return getOnePieceSets()
 })
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────

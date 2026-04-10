@@ -54,6 +54,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // TCG card browser search
   searchTcg: (query, page) => ipcRenderer.invoke('tcg:search', query, page ?? 1),
 
+  // Pokemon set list for set filter dropdown
+  getPokemonSets: () => ipcRenderer.invoke('tcg:sets'),
+
+  // One Piece card search
+  searchOptcg: (query, setId) => ipcRenderer.invoke('op:search', query, setId ?? ''),
+
+  // One Piece set list
+  getOptcgSets: () => ipcRenderer.invoke('op:sets'),
+
   // EUR/USD live exchange rate (cached per session)
   getEurUsdRate: () => ipcRenderer.invoke('tcg:get-eur-usd-rate'),
 

@@ -40,10 +40,12 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isCustom = !!card?.isCustom
+  const isOnePiece = card?.cardGame === 'onepiece'
 
   useEffect(() => {
     if (!card) { setPricing(null); return }
     if (isCustom) return  // Custom cards have no TCG price data
+    if (isOnePiece) return  // One Piece cards have manual pricing only
     if (card.tcgApiId.startsWith('unmatched-')) return
     setLoadingPrices(true)
     setPricing(null)
@@ -56,7 +58,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   useEffect(() => {
     if (card) {
       setPurchasedPriceInput(card.purchasedPrice != null ? String(card.purchasedPrice) : '')
-      if (card.isCustom) {
+      if (card.isCustom || card.cardGame === 'onepiece') {
         setNameInput(card.name ?? '')
         setSetNameInput(card.setName ?? '')
         setCollectorNumberInput(card.collectorNumber ?? '')
@@ -133,7 +135,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
       <DialogContent className="!w-[95vw] !max-w-[95vw] h-[88vh] p-0 overflow-hidden border-border/60 shadow-2xl bg-card flex flex-col">
 
         {/* Top section: image + card identity */}
-        <div className="flex gap-8 p-8 border-b border-border/30 flex-shrink-0">
+        <div className="flex gap-8 p-8 flex-shrink-0">
 
           {/* Card image */}
           <div className="flex-shrink-0 w-44">
@@ -243,9 +245,9 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
               </div>
             </div>
 
-            {isCustom && !readOnly ? (
+            {(isCustom || isOnePiece) && !readOnly ? (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">Estimated Value</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">{isOnePiece ? 'Price' : 'Estimated Value'}</p>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">$</span>
                   <input
@@ -298,8 +300,8 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
 
         {/* Bottom section: pricing */}
         <div className="flex-1 overflow-auto p-8 min-h-0">
-          {isCustom ? (
-            <p className="text-sm text-muted-foreground/50">Custom card — no market price data</p>
+          {isCustom || isOnePiece ? (
+            <p className="text-sm text-muted-foreground/50">{isOnePiece ? 'One Piece card — set price manually above' : 'Custom card — no market price data'}</p>
           ) : loadingPrices ? (
             <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading prices...
@@ -313,7 +315,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">By Condition</p>
                   <div className="space-y-1">
                     {CONDITIONS.map(c => (
-                      <div key={c.short} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
+                      <div key={c.short} className="flex items-center justify-between py-3">
                         <div className="flex items-center gap-5">
                           <span className="text-sm font-mono font-bold w-10 text-foreground/80">{c.short}</span>
                           <span className="text-sm text-muted-foreground">{c.label}</span>
@@ -340,7 +342,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                             { l: 'Mid',    val: v.mid },
                             { l: 'High',   val: v.high },
                           ].map(({ l, val }) => (
-                            <div key={l} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
+                            <div key={l} className="flex items-center justify-between py-1.5">
                               <span className="text-sm text-muted-foreground">{l}</span>
                               <span className={`text-base font-bold tabular-nums ${l === 'Market' ? 'text-primary' : ''}`}>
                                 {val ? formatCurrency(val) : '—'}
@@ -371,7 +373,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                       { label: '7-Day',   value: pricing.cardmarket.avg7 },
                       { label: '30-Day',  value: pricing.cardmarket.avg30 },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
+                      <div key={label} className="flex items-center justify-between py-3">
                         <span className="text-sm text-muted-foreground">{label}</span>
                         <div className="text-right">
                           <span className="text-base font-bold tabular-nums">
@@ -396,7 +398,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
 
         {/* Footer */}
         {card.priceUpdatedAt && (
-          <div className="px-8 py-3 border-t border-border/20 flex-shrink-0">
+          <div className="px-8 py-3 flex-shrink-0">
             <p className="text-[10px] text-muted-foreground/30">
               Prices as of {new Date(card.priceUpdatedAt).toLocaleDateString()}
             </p>

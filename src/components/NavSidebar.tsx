@@ -42,11 +42,11 @@ export function NavSidebar({
 
       {/* Slide-out panel */}
       <div
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-background border-r border-border shadow-xl transition-transform duration-200 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-background shadow-xl transition-transform duration-200 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-4">
           <span className="text-sm font-semibold">Menu</span>
           <button
             onClick={onClose}

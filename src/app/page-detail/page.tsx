@@ -16,7 +16,10 @@ import {
 } from '@/components/ui/dialog'
 import { Search, X, Check, Loader2, LayoutGrid, ChevronLeft, ChevronRight, Trash2, SlidersHorizontal, ZoomIn, ImagePlus } from 'lucide-react'
 import { toast } from 'sonner'
-import type { CardRow, TcgCardResult, FullCardPricing } from '@/types/electron'
+import type { CardRow, TcgCardResult, OnePieceCardResult, FullCardPricing } from '@/types/electron'
+
+type AnyCard = TcgCardResult | OnePieceCardResult
+type GameMode = 'pokemon' | 'onepiece'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { formatCurrency } from '@/lib/utils'
@@ -64,8 +67,11 @@ function PageDetailInner() {
   // Slide-in card search panel
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelTab, setPanelTab] = useState<'search' | 'custom'>('search')
+  const [gameMode, setGameMode] = useState<GameMode>('pokemon')
+  const [sets, setSets] = useState<{ id: string; name: string }[]>([])
+  const [selectedSet, setSelectedSet] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<TcgCardResult[]>([])
+  const [searchResults, setSearchResults] = useState<AnyCard[]>([])
   const [searching, setSearching] = useState(false)
   const [searchPage, setSearchPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -122,9 +128,22 @@ function PageDetailInner() {
     if (pageId) load()
   }, [pageId, load])
 
+  useEffect(() => {
+    if (!window.electronAPI) return
+    setSets([])
+    setSelectedSet('')
+    setSearchResults([])
+    setSearchQuery('')
+    if (gameMode === 'pokemon') {
+      window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
+    } else {
+      window.electronAPI.getOptcgSets().then(setSets).catch(() => {})
+    }
+  }, [gameMode])
+
   // ─── Card search panel ───────────────────────────────────────────────────────
 
-  const runSearch = useCallback(async (q: string) => {
+  const runSearch = useCallback(async (q: string, mode: GameMode = 'pokemon', set = '') => {
     if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
       setSearchResults([])
       setHasMore(false)
@@ -136,16 +155,22 @@ function PageDetailInner() {
     setSearchPage(1)
     setSearchPrices({})
     try {
-      const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), 1)
-      setSearchResults(cards)
-      setHasMore(more)
-      // Fetch prices for all results in parallel
-      if (cards.length > 0) {
-        setFetchingPrices(true)
-        window.electronAPI.getCardPricesBatch(cards.map(c => c.tcgApiId))
-          .then(prices => setSearchPrices(prices))
-          .catch(() => {})
-          .finally(() => setFetchingPrices(false))
+      if (mode === 'onepiece') {
+        const { cards } = await window.electronAPI.searchOptcg(q.trim(), set || undefined)
+        setSearchResults(cards)
+        setHasMore(false)
+      } else {
+        const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), 1)
+        const filtered = set ? cards.filter(c => c.setId === set) : cards
+        setSearchResults(filtered)
+        setHasMore(set ? false : more)
+        if (filtered.length > 0) {
+          setFetchingPrices(true)
+          window.electronAPI.getCardPricesBatch(filtered.map(c => c.tcgApiId))
+            .then(prices => setSearchPrices(prices))
+            .catch(() => {})
+            .finally(() => setFetchingPrices(false))
+        }
       }
     } catch {
       toast.error('Search failed')
@@ -181,7 +206,7 @@ function PageDetailInner() {
   function handleSearchChange(value: string) {
     setSearchQuery(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => runSearch(value), 400)
+    debounceRef.current = setTimeout(() => runSearch(value, gameMode, selectedSet), 400)
   }
 
   function toggleCardSelection(tcgApiId: string) {
@@ -197,7 +222,7 @@ function PageDetailInner() {
     if (!window.electronAPI || selectedCards.size === 0 || !page) return
     setAdding(true)
     setAddProgress(0)
-    const toAdd = searchResults.filter(c => selectedCards.has(c.tcgApiId))
+    const toAdd = searchResults.filter((c: AnyCard) => selectedCards.has(c.tcgApiId))
     const totalToAdd = toAdd.length
     let addedCount = 0
     const capacity = page.cols * page.rows
@@ -218,6 +243,7 @@ function PageDetailInner() {
           rarity: card.rarity ?? undefined,
           year: card.year ?? undefined,
           imageUrl: card.imageUrl ?? undefined,
+          cardGame: 'cardGame' in card ? card.cardGame : 'pokemon',
           quantity: 1,
           tradeList: 0,
           position: nextPos++,
@@ -252,6 +278,7 @@ function PageDetailInner() {
               rarity: card.rarity ?? undefined,
               year: card.year ?? undefined,
               imageUrl: card.imageUrl ?? undefined,
+              cardGame: 'cardGame' in card ? card.cardGame : 'pokemon',
               quantity: 1,
               tradeList: 0,
               position: i,
@@ -408,7 +435,7 @@ function PageDetailInner() {
       return market && market > 0
     })
     if (filterNoImage) results = results.filter(c => !!c.imageUrl)
-    if (filterPocket) results = results.filter(c => !c.isPocket)
+    if (filterPocket) results = results.filter(c => !('isPocket' in c && c.isPocket))
     switch (sortMode) {
       case 'newest': results.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
       case 'oldest': results.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
@@ -615,6 +642,27 @@ function PageDetailInner() {
               </button>
             </div>
 
+            {/* Game selector */}
+            <div className="flex gap-1.5 px-3 py-2">
+              {(['pokemon', 'onepiece'] as GameMode[]).map(mode => (
+                <button key={mode} onClick={() => setGameMode(mode)}
+                  className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${gameMode === mode ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                  {mode === 'pokemon' ? 'Pokémon' : 'One Piece'}
+                </button>
+              ))}
+            </div>
+
+            {/* Set filter */}
+            {sets.length > 0 && panelTab === 'search' && (
+              <div className="px-3 pb-2">
+                <select value={selectedSet} onChange={e => { setSelectedSet(e.target.value); if (searchQuery.length >= 2) runSearch(searchQuery, gameMode, e.target.value) }}
+                  className="w-full text-xs px-2 py-1.5 rounded-lg border border-border bg-background text-foreground">
+                  <option value="">All Sets</option>
+                  {sets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+
             {/* Tab switcher */}
             <div className="flex border-b">
               <button
@@ -780,6 +828,8 @@ function PageDetailInner() {
                         <p className="text-xs text-muted-foreground/60">#{card.collectorNumber}</p>
                       )}
                       {(() => {
+                        const isOP = 'cardGame' in card && card.cardGame === 'onepiece'
+                        if (isOP) return <p className="text-xs text-muted-foreground/40 mt-1">Set price manually</p>
                         const fetched = searchPrices[card.tcgApiId]
                         const market = fetched?.bestMarket ?? card.priceMarket
                         if (fetchingPrices && fetched === undefined) {

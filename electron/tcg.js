@@ -248,4 +248,18 @@ async function fetchEurUsdRate() {
   return _eurUsdRate
 }
 
-module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch, fetchEurUsdRate, isPocketCard }
+async function getPokemonSets() {
+  try {
+    const res = await fetch(`${TCGDEX_BASE}/sets`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return []
+    const data = await res.json()
+    const sets = Array.isArray(data)
+      ? data.map(s => ({ id: s.id || '', name: s.name || s.id || '' })).filter(s => s.id)
+      : []
+    return sets
+  } catch {
+    return []
+  }
+}
+
+module.exports = { searchCards, refreshCardPrices, fetchCardPrices, getFullCardPricing, getCardPricesBatch, fetchEurUsdRate, isPocketCard, getPokemonSets }

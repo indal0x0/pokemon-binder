@@ -10,8 +10,8 @@ export type Theme =
   | 'terra' | 'synthwave' | 'neon' | 'sunset' | 'aurora'
 
 export type BgAnimation =
-  | 'none' | 'sparkles' | 'gradient' | 'fire' | 'water' | 'electric' | 'leaves' | 'snow' | 'stars'
-  | 'rain' | 'fireflies' | 'aurora' | 'pokeballs' | 'matrix' | 'bubbles' | 'galaxy' | 'waves' | 'confetti' | 'fog'
+  | 'none' | 'sparkles' | 'gradient' | 'fire' | 'water' | 'electric' | 'stars'
+  | 'fireflies' | 'aurora' | 'matrix' | 'bubbles' | 'galaxy' | 'waves' | 'fog'
 
 export interface CustomColors {
   background?: string
@@ -54,18 +54,13 @@ const ANIMATIONS: { id: BgAnimation; label: string; icon: string }[] = [
   { id: 'fire',      label: 'Fire',      icon: '🔥' },
   { id: 'water',     label: 'Water',     icon: '💧' },
   { id: 'electric',  label: 'Electric',  icon: '⚡' },
-  { id: 'leaves',    label: 'Leaves',    icon: '🍃' },
-  { id: 'snow',      label: 'Snow',      icon: '❄' },
   { id: 'stars',     label: 'Stars',     icon: '★' },
-  { id: 'rain',      label: 'Rain',      icon: '🌧' },
   { id: 'fireflies', label: 'Fireflies', icon: '✨' },
   { id: 'aurora',    label: 'Aurora',    icon: '🌌' },
-  { id: 'pokeballs', label: 'Pokéballs', icon: '⚽' },
   { id: 'matrix',    label: 'Matrix',    icon: '▓' },
   { id: 'bubbles',   label: 'Bubbles',   icon: '◎' },
   { id: 'galaxy',    label: 'Galaxy',    icon: '✧' },
   { id: 'waves',     label: 'Waves',     icon: '〜' },
-  { id: 'confetti',  label: 'Confetti',  icon: '🎊' },
   { id: 'fog',       label: 'Fog',       icon: '☁' },
 ]
 
@@ -131,6 +126,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedAnim = localStorage.getItem('bg-animation') as BgAnimation | null
     if (storedAnim && ANIMATIONS.some(a => a.id === storedAnim)) {
       setBgAnimationState(storedAnim)
+    } else if (storedAnim && !ANIMATIONS.some(a => a.id === storedAnim)) {
+      // Stored animation was removed — clear it
+      localStorage.removeItem('bg-animation')
     }
     try {
       const storedColors = JSON.parse(localStorage.getItem('theme-custom-colors') || '{}') as CustomColors

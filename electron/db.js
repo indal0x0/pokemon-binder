@@ -102,6 +102,7 @@ function initDb(Database, dbPath) {
     `ALTER TABLE binder_cards ADD COLUMN priceBase REAL`,
     `ALTER TABLE binder_cards ADD COLUMN purchasedPrice REAL`,
     `ALTER TABLE binder_cards ADD COLUMN isCustom INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE binder_cards ADD COLUMN cardGame TEXT NOT NULL DEFAULT 'pokemon'`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* already exists */ }
@@ -279,8 +280,8 @@ function createCard(data) {
   db.prepare(`
     INSERT INTO binder_cards
       (id, binderId, pageId, tcgApiId, name, setId, setName, collectorNumber, rarity, imageUrl,
-       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, year, isCustom, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       priceLow, priceMid, priceMarket, priceHigh, priceUpdatedAt, quantity, condition, tradeList, position, year, isCustom, cardGame, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, data.binderId, data.pageId ?? null, data.tcgApiId, data.name,
     data.setId || 'unknown', data.setName || 'Unknown Set', data.collectorNumber || '',
@@ -291,6 +292,7 @@ function createCard(data) {
     position,
     data.year ?? null,
     data.isCustom ? 1 : 0,
+    data.cardGame || 'pokemon',
     ts, ts
   )
   return db.prepare('SELECT * FROM binder_cards WHERE id = ?').get(id)
@@ -323,7 +325,7 @@ function deleteCard(id) {
 function getCardsForRefresh(binderId) {
   return db.prepare(`
     SELECT * FROM binder_cards
-    WHERE binderId = ? AND tcgApiId NOT LIKE 'unmatched-%' AND isCustom = 0
+    WHERE binderId = ? AND tcgApiId NOT LIKE 'unmatched-%' AND isCustom = 0 AND cardGame = 'pokemon'
   `).all(binderId)
 }
 

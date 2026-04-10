@@ -1,6 +1,6 @@
 {
   "name": "offdex",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -20,16 +20,19 @@
     "appId": "com.offdex.app",
     "productName": "OffDex",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.png"
     },
     "mac": {
       "target": ["dmg", "zip"],
-      "category": "public.app-category.games"
+      "category": "public.app-category.games",
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Game",
-      "maintainer": "indal0x0 <indal0x0@users.noreply.github.com>"
+      "maintainer": "indal0x0 <indal0x0@users.noreply.github.com>",
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": true,

@@ -11,7 +11,7 @@ export function NavBar({ backHref }: { backHref: string }) {
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
+      <div className="flex items-center justify-between px-4 py-2 bg-background/80 backdrop-blur-sm sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarOpen(true)}

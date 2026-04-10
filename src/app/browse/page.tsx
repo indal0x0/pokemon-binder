@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -8,8 +8,11 @@ import { Search, Plus, Check, Loader2, SlidersHorizontal, ChevronLeft, ChevronRi
 import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import type { TcgCardResult, FullCardPricing, CardRow } from '@/types/electron'
+import type { TcgCardResult, OnePieceCardResult, FullCardPricing, CardRow } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
+
+type AnyCard = TcgCardResult | OnePieceCardResult
+type GameMode = 'pokemon' | 'onepiece'
 
 export default function BrowsePage() {
   const params = typeof window !== 'undefined'
@@ -18,8 +21,11 @@ export default function BrowsePage() {
   const binderId = params.get('binderId') ?? ''
   const pageId = params.get('pageId') ?? ''
 
+  const [gameMode, setGameMode] = useState<GameMode>('pokemon')
+  const [sets, setSets] = useState<{ id: string; name: string }[]>([])
+  const [selectedSet, setSelectedSet] = useState('')
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<TcgCardResult[]>([])
+  const [results, setResults] = useState<AnyCard[]>([])
   const [searching, setSearching] = useState(false)
   const [browsePage, setBrowsePage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -32,33 +38,54 @@ export default function BrowsePage() {
   const [filterPocket, setFilterPocket] = useState(false)
   const [sortMode, setSortMode] = useState<'default' | 'newest' | 'oldest' | 'price-high' | 'price-low'>('default')
   const [showSortFilter, setShowSortFilter] = useState(false)
-  const [selectedBrowseCard, setSelectedBrowseCard] = useState<TcgCardResult | null>(null)
+  const [selectedBrowseCard, setSelectedBrowseCard] = useState<AnyCard | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  const loadPage = useCallback(async (q: string, page: number) => {
+  useEffect(() => {
+    if (!window.electronAPI) return
+    setSets([])
+    setSelectedSet('')
+    setResults([])
+    if (gameMode === 'pokemon') {
+      window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
+    } else {
+      window.electronAPI.getOptcgSets().then(setSets).catch(() => {})
+    }
+  }, [gameMode])
+
+  const loadPage = useCallback(async (q: string, page: number, mode: GameMode = 'pokemon', set = '') => {
     if (!q.trim() || q.trim().length < 2 || !window.electronAPI) return
     priceTimeoutsRef.current.forEach(t => clearTimeout(t))
     priceTimeoutsRef.current = []
     setCardPrices({})
     setSearching(true)
     try {
-      const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), page)
-      setResults(cards)
-      setHasMore(more)
-      setBrowsePage(page)
-      // Stagger price fetches 100ms apart
-      cards.forEach((card, i) => {
-        const t = setTimeout(async () => {
-          try {
-            const prices = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
-            setCardPrices(prev => ({ ...prev, [card.tcgApiId]: prices[card.tcgApiId] ?? null }))
-          } catch {
-            setCardPrices(prev => ({ ...prev, [card.tcgApiId]: null }))
-          }
-        }, i * 100)
-        priceTimeoutsRef.current.push(t)
-      })
+      if (mode === 'onepiece') {
+        const { cards } = await window.electronAPI.searchOptcg(q.trim(), set || undefined)
+        setResults(cards)
+        setHasMore(false)
+        setBrowsePage(1)
+      } else {
+        const filteredSet = set
+        const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), page)
+        const filtered = filteredSet ? cards.filter(c => c.setId === filteredSet) : cards
+        setResults(filtered)
+        setHasMore(filteredSet ? false : more)
+        setBrowsePage(page)
+        // Stagger price fetches 100ms apart
+        filtered.forEach((card, i) => {
+          const t = setTimeout(async () => {
+            try {
+              const prices = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
+              setCardPrices(prev => ({ ...prev, [card.tcgApiId]: prices[card.tcgApiId] ?? null }))
+            } catch {
+              setCardPrices(prev => ({ ...prev, [card.tcgApiId]: null }))
+            }
+          }, i * 100)
+          priceTimeoutsRef.current.push(t)
+        })
+      }
     } catch {
       toast.error('Search failed')
     } finally {
@@ -66,7 +93,7 @@ export default function BrowsePage() {
     }
   }, [])
 
-  const search = useCallback(async (q: string) => {
+  const search = useCallback(async (q: string, mode: GameMode = 'pokemon', set = '') => {
     if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
       setResults([])
       setCardPrices({})
@@ -75,16 +102,16 @@ export default function BrowsePage() {
       return
     }
     currentQueryRef.current = q.trim()
-    await loadPage(q, 1)
+    await loadPage(q, 1, mode, set)
   }, [loadPage])
 
   function handleQueryChange(value: string) {
     setQuery(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => search(value), 500)
+    debounceRef.current = setTimeout(() => search(value, gameMode, selectedSet), 500)
   }
 
-  async function addCard(card: TcgCardResult) {
+  async function addCard(card: AnyCard) {
     if (!window.electronAPI || !binderId) return
     setAddingId(card.tcgApiId)
     try {
@@ -104,6 +131,7 @@ export default function BrowsePage() {
         priceMarket: card.priceMarket ?? undefined,
         priceHigh: card.priceHigh ?? undefined,
         priceUpdatedAt: card.priceUpdatedAt ?? undefined,
+        cardGame: 'cardGame' in card ? card.cardGame : 'pokemon',
         quantity: 1,
         tradeList: 0,
         condition: null,
@@ -127,10 +155,36 @@ export default function BrowsePage() {
     <div className="min-h-screen">
       <NavBar backHref={backHref} />
       <main className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-xl font-bold">Card Browser</h1>
-        <p className="text-sm text-muted-foreground">Search 20,000+ Pokemon cards</p>
       </div>
+
+      {/* Game selector */}
+      <div className="flex gap-2 mb-4">
+        {(['pokemon', 'onepiece'] as GameMode[]).map(mode => (
+          <button
+            key={mode}
+            onClick={() => { setGameMode(mode); setResults([]); setQuery('') }}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${gameMode === mode ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            {mode === 'pokemon' ? 'Pokémon' : 'One Piece'}
+          </button>
+        ))}
+      </div>
+
+      {/* Set filter */}
+      {sets.length > 0 && (
+        <div className="mb-4">
+          <select
+            value={selectedSet}
+            onChange={e => { setSelectedSet(e.target.value); if (query.length >= 2) search(query, gameMode, e.target.value) }}
+            className="text-sm px-3 py-1.5 rounded-lg border border-border bg-background text-foreground"
+          >
+            <option value="">All Sets</option>
+            {sets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -230,7 +284,7 @@ export default function BrowsePage() {
           return p !== undefined && p !== null && (p.bestMarket ?? 0) > 0
         })
         if (filterNoImage) displayed = displayed.filter(c => !!c.imageUrl)
-        if (filterPocket) displayed = displayed.filter(c => !c.isPocket)
+        if (filterPocket) displayed = displayed.filter(c => !('isPocket' in c && c.isPocket))
         switch (sortMode) {
           case 'newest': displayed.sort((a, b) => (b.year ?? 0) - (a.year ?? 0)); break
           case 'oldest': displayed.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999)); break
@@ -242,8 +296,9 @@ export default function BrowsePage() {
             {displayed.map(card => {
               const added = addedIds.has(card.tcgApiId)
               const adding = addingId === card.tcgApiId
-              const fetchedPricing = cardPrices[card.tcgApiId]
-              const priceLoading = fetchedPricing === undefined
+              const isOP = 'cardGame' in card && card.cardGame === 'onepiece'
+              const fetchedPricing = isOP ? null : cardPrices[card.tcgApiId]
+              const priceLoading = !isOP && fetchedPricing === undefined
               const displayPrice = fetchedPricing?.bestMarket ?? card.priceMarket
               return (
                 <div key={card.tcgApiId} className="relative bg-card border rounded-lg overflow-hidden">
@@ -303,7 +358,7 @@ export default function BrowsePage() {
       {(browsePage > 1 || hasMore) && (
         <div className="flex items-center justify-between mt-6 px-2">
           <button
-            onClick={() => loadPage(currentQueryRef.current, browsePage - 1)}
+            onClick={() => loadPage(currentQueryRef.current, browsePage - 1, gameMode, selectedSet)}
             disabled={browsePage === 1 || searching}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -311,7 +366,7 @@ export default function BrowsePage() {
           </button>
           <span className="text-sm text-muted-foreground">Page {browsePage}</span>
           <button
-            onClick={() => loadPage(currentQueryRef.current, browsePage + 1)}
+            onClick={() => loadPage(currentQueryRef.current, browsePage + 1, gameMode, selectedSet)}
             disabled={!hasMore || searching}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -348,6 +403,7 @@ export default function BrowsePage() {
           position: null,
           purchasedPrice: null,
           isCustom: 0,
+          cardGame: 'cardGame' in selectedBrowseCard ? (selectedBrowseCard as OnePieceCardResult).cardGame : 'pokemon',
           createdAt: '',
           updatedAt: '',
         } satisfies CardRow}

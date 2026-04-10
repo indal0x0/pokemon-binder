@@ -15,18 +15,13 @@ const COUNTS: Record<BgAnimation, number> = {
   fire:      90,
   water:     80,
   electric:  50,
-  leaves:    70,
-  snow:      150,
   stars:     0,   // handled by StarCanvas
-  rain:      130,
   fireflies: 95,
   aurora:    8,
-  pokeballs: 55,
-  matrix:    40,
+  matrix:    60,
   bubbles:   70,
   galaxy:    0,   // handled by StarCanvas
   waves:     12,
-  confetti:  130,
   fog:       10,
 }
 
@@ -174,81 +169,8 @@ export function AnimatedBackground() {
     )
   }
 
-  if (bgAnimation === 'leaves') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => {
-          const colors = ['oklch(0.65 0.22 140)', 'oklch(0.70 0.20 130)', 'oklch(0.60 0.24 145)', 'oklch(0.75 0.18 115)']
-          const color = colors[Math.floor(p.hue * colors.length)]
-          return (
-            <div
-              key={p.id}
-              style={{
-                position: 'absolute',
-                left: `${p.left}%`,
-                top: '-10px',
-                width: `${5 + p.size * 7}px`,
-                height: `${5 + p.size * 7}px`,
-                borderRadius: '0 50% 0 50%',
-                background: color,
-                opacity: 0,
-                animation: `bgLeafFall ${p.duration}s ${p.delay}s linear infinite`,
-              }}
-            />
-          )
-        })}
-      </div>
-    )
-  }
-
-  if (bgAnimation === 'snow') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              top: '-10px',
-              width: `${2 + p.size * 5}px`,
-              height: `${2 + p.size * 5}px`,
-              borderRadius: '50%',
-              background: 'oklch(0.92 0.02 200)',
-              opacity: 0,
-              animation: `bgSnowFall ${p.duration}s ${p.delay}s linear infinite`,
-            }}
-          />
-        ))}
-      </div>
-    )
-  }
-
   if (bgAnimation === 'stars') {
     return <StarCanvas />
-  }
-
-  if (bgAnimation === 'rain') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              top: '-10px',
-              width: '1px',
-              height: `${8 + p.size * 14}px`,
-              background: 'oklch(0.70 0.10 210)',
-              borderRadius: '1px',
-              opacity: 0,
-              animation: `bgRainFall ${p.duration * 0.4 + 0.5}s ${p.delay}s linear infinite`,
-            }}
-          />
-        ))}
-      </div>
-    )
   }
 
   if (bgAnimation === 'fireflies') {
@@ -312,31 +234,8 @@ export function AnimatedBackground() {
     )
   }
 
-  if (bgAnimation === 'pokeballs') {
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.left}%`,
-              top: `${p.top}%`,
-              fontSize: `${12 + p.size * 18}px`,
-              opacity: 0,
-              userSelect: 'none',
-              animation: `bgPokeballFloat ${p.duration + 3}s ${p.delay}s ease-in-out infinite`,
-            }}
-          >
-            ⚽
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   if (bgAnimation === 'matrix') {
-    const cols = Array.from({ length: COUNTS.matrix }, (_, i) => i)
+    const cols = Array.from({ length: particles.length }, (_, i) => i)
     return (
       <div className={base} style={{ zIndex: -1 }}>
         {cols.map(i => {
@@ -413,40 +312,6 @@ export function AnimatedBackground() {
             }}
           />
         ))}
-      </div>
-    )
-  }
-
-  if (bgAnimation === 'confetti') {
-    const confettiColors = [
-      'oklch(0.72 0.28 30)',
-      'oklch(0.75 0.25 85)',
-      'oklch(0.70 0.26 140)',
-      'oklch(0.68 0.28 200)',
-      'oklch(0.72 0.28 260)',
-      'oklch(0.70 0.30 320)',
-    ]
-    return (
-      <div className={base} style={{ zIndex: -1 }}>
-        {particles.map(p => {
-          const color = confettiColors[Math.floor(p.hue * confettiColors.length)]
-          return (
-            <div
-              key={p.id}
-              style={{
-                position: 'absolute',
-                left: `${p.left}%`,
-                top: '-10px',
-                width: `${4 + p.size * 6}px`,
-                height: `${6 + p.size * 4}px`,
-                background: color,
-                borderRadius: '1px',
-                opacity: 0,
-                animation: `bgConfettiFall ${p.duration}s ${p.delay}s linear infinite`,
-              }}
-            />
-          )
-        })}
       </div>
     )
   }
