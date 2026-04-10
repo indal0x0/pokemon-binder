@@ -25,9 +25,19 @@ async function getOnePieceSets() {
   }
 }
 
+function makeOnePieceId(card) {
+  const base = card.card_set_id
+  if (!base) return `op-${Math.random().toString(36).slice(2)}`
+  if (!card.card_image) return base
+  // Extract filename stem from image URL to differentiate alternate arts
+  // e.g. "OP01-001_p1" from ".../OP01-001_p1.png" → id becomes "OP01-001::OP01-001_p1"
+  const stem = card.card_image.split('/').pop()?.replace(/\.[^.]+$/, '') || ''
+  return stem && stem !== base ? `${base}::${stem}` : base
+}
+
 function mapCard(card) {
   return {
-    tcgApiId: card.card_set_id || `op-${Math.random().toString(36).slice(2)}`,
+    tcgApiId: makeOnePieceId(card),
     name: card.card_name || 'Unknown Card',
     setId: card.set_id || 'unknown',
     setName: card.set_name || 'Unknown Set',
