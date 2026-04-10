@@ -205,6 +205,7 @@ function PageDetailInner() {
 
   function handleSearchChange(value: string) {
     setSearchQuery(value)
+    setSearchResults([])
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => runSearch(value, gameMode, selectedSet), 400)
   }

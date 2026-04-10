@@ -107,6 +107,7 @@ export default function BrowsePage() {
 
   function handleQueryChange(value: string) {
     setQuery(value)
+    setResults([])
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => search(value, gameMode, selectedSet), 500)
   }
