@@ -37,30 +37,67 @@ function parseId(tcgApiId) {
 
 /**
  * Find the best-matching cardboard2 card for a given tcgApiId.
- * When multiple variants share the same card_serial, match by image filename stem.
+ * When multiple variants share the same card_serial, tries three tiebreakers
+ * in order before falling back to the first match:
+ *   1. Stored imageUrl stem — unique per art, most direct link to cardboard2 filename
+ *   2. tcgApiId variant stem — works when makeOnePieceId encoded a suffix
+ *   3. Card name — for genuinely different-named cards sharing a serial
+ *
+ * cardboard2 image filenames include a language suffix (_EN, _JP, …) that the
+ * optcg API image stems do not, so all stems are normalized before comparison.
  */
-function findCard(allCards, tcgApiId) {
+function findCard(allCards, tcgApiId, name, imageUrl) {
   const { serial, stem } = parseId(tcgApiId)
   const matches = allCards.filter(c => c.card_serial === serial)
+
   if (matches.length === 0) return null
-  if (matches.length === 1 || !stem) return matches[0]
-  // Try to match variant by image filename (e.g. "OP01-024_p1.png")
-  const byImage = matches.find(c => {
-    const fn = (c.image_filename || '').replace(/\.[^.]+$/, '')
-    const url = (c.limitlesstcg_image_url || '').split('/').pop()?.replace(/\.[^.]+$/, '') || ''
-    return fn === stem || url === stem
-  })
-  return byImage ?? matches[0]
+  if (matches.length === 1) return matches[0]
+
+  // Strip trailing language code (_EN, _JP, _KR, …) for language-agnostic comparison
+  const normStem = s => (s || '').replace(/_[A-Z]{2}$/, '')
+
+  function imageStem(c) {
+    const fromFilename = (c.image_filename || '').replace(/\.[^.]+$/, '')
+    if (fromFilename) return fromFilename
+    return (c.limitlesstcg_image_url || '').split('/').pop()?.replace(/\.[^.]+$/, '') || ''
+  }
+
+  // Tiebreaker 1: stored imageUrl stem (skip local upload paths)
+  if (imageUrl && !imageUrl.startsWith('uploads/')) {
+    const urlStem = imageUrl.split('/').pop()?.replace(/\.[^.]+$/, '') || ''
+    if (urlStem) {
+      const byUrl = matches.find(c => normStem(imageStem(c)) === normStem(urlStem))
+      if (byUrl) return byUrl
+    }
+  }
+
+  // Tiebreaker 2: tcgApiId variant stem
+  if (stem) {
+    const byImage = matches.find(c => normStem(imageStem(c)) === normStem(stem))
+    if (byImage) return byImage
+  } else {
+    const base = matches.find(c => normStem(imageStem(c)) === normStem(serial))
+    if (base) return base
+  }
+
+  // Tiebreaker 3: card name
+  if (name) {
+    const normalize = s => (s || '').toLowerCase().trim()
+    const byName = matches.find(c => normalize(c.card_name) === normalize(name))
+    if (byName) return byName
+  }
+
+  return matches[0]
 }
 
 /**
  * Look up price and card details for a One Piece card by its tcgApiId.
  * Returns null if the card is not found in the cache.
  */
-async function lookupOpCard(tcgApiId) {
+async function lookupOpCard(tcgApiId, name, imageUrl) {
   try {
     const allCards = await _loadData()
-    const card = findCard(allCards, tcgApiId)
+    const card = findCard(allCards, tcgApiId, name, imageUrl)
     if (!card) return null
     return {
       priceMarket: card.current_price ? parseFloat(card.current_price) : null,
@@ -72,7 +109,6 @@ async function lookupOpCard(tcgApiId) {
       attributes: card.attributes || null,
       counter: card.counter || null,
       card_type: card.type || null,
-      tcgplayer_url: card.tcgplayer_url || null,
       abilities: Array.isArray(card.abilities) ? card.abilities : [],
     }
   } catch {
@@ -88,7 +124,7 @@ async function refreshOpPrices(binderCards) {
   const allCards = await _loadData()
   const updates = []
   for (const bc of binderCards) {
-    const card = findCard(allCards, bc.tcgApiId)
+    const card = findCard(allCards, bc.tcgApiId, bc.name, bc.imageUrl)
     if (!card) continue
     const priceMarket = card.current_price ? parseFloat(card.current_price) : null
     const priceLow = card.value_amount ? parseFloat(card.value_amount) : null

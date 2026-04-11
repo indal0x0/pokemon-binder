@@ -34,7 +34,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   const [opDetails, setOpDetails] = useState<{
     card_effect: string | null; cost: string | null; power: string | null
     attributes: string | null; counter: string | null; card_type: string | null
-    tcgplayer_url: string | null; abilities: string[]
+    abilities: string[]
     priceMarket: number | null; priceLow: number | null
   } | null>(null)
   const [loadingOpDetails, setLoadingOpDetails] = useState(false)
@@ -52,7 +52,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   useEffect(() => {
     if (!card || !isOnePiece) { setOpDetails(null); return }
     setLoadingOpDetails(true)
-    window.electronAPI?.getOpCardDetails(card.tcgApiId)
+    window.electronAPI?.getOpCardDetails(card.tcgApiId, card.name, card.imageUrl ?? undefined)
       .then(d => setOpDetails(d ?? null))
       .catch(() => setOpDetails(null))
       .finally(() => setLoadingOpDetails(false))
@@ -372,13 +372,6 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                     <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{opDetails.card_effect}</p>
                   </div>
                 )}
-                {/* TCGPlayer link */}
-                {opDetails.tcgplayer_url && (
-                  <a href={opDetails.tcgplayer_url} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-                    View on TCGPlayer →
-                  </a>
-                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/50">No card details available</p>
@@ -474,17 +467,6 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                 <p className="text-sm text-muted-foreground/50">No price data available</p>
               )}
 
-              {/* TCGPlayer link for Pokemon */}
-              {!isOnePiece && !isCustom && !card.tcgApiId.startsWith('unmatched-') && (
-                <a
-                  href={`https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(`${card.name} ${card.setName}`)}&view=grid`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
-                >
-                  View on TCGPlayer →
-                </a>
-              )}
             </div>
           )}
         </div>

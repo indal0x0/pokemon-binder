@@ -67,7 +67,7 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false)
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000')
+    mainWindow.loadURL('http://localhost:4321')
   } else {
     mainWindow.loadURL('app://./index.html')
   }
@@ -257,7 +257,7 @@ ipcMain.handle('cards:create', async (_, data) => {
     try {
       const { lookupOpCard } = require('./cardboard2')
       const { updateOpCardPrice } = require('./db')
-      const info = await lookupOpCard(card.tcgApiId)
+      const info = await lookupOpCard(card.tcgApiId, card.name, card.imageUrl)
       if (info?.priceMarket != null || info?.priceLow != null) {
         updateOpCardPrice(card.id, info.priceMarket, info.priceLow)
         return require('./db').getCardsByIds([card.id])[0] ?? card
@@ -445,9 +445,9 @@ ipcMain.handle('op:sets', async () => {
   return getOnePieceSets()
 })
 
-ipcMain.handle('op:card-details', async (_, tcgApiId) => {
+ipcMain.handle('op:card-details', async (_, tcgApiId, name, imageUrl) => {
   const { lookupOpCard } = require('./cardboard2')
-  return lookupOpCard(tcgApiId)
+  return lookupOpCard(tcgApiId, name, imageUrl)
 })
 
 // ─── IPC: Wishlist ────────────────────────────────────────────────────────────

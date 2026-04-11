@@ -188,7 +188,7 @@ interface ElectronAPI {
   getPokemonSets(): Promise<{ id: string; name: string }[]>
   searchOptcg(query: string, setId?: string): Promise<{ cards: OnePieceCardResult[]; hasMore: false }>
   getOptcgSets(): Promise<{ id: string; name: string }[]>
-  getOpCardDetails(tcgApiId: string): Promise<{
+  getOpCardDetails(tcgApiId: string, name?: string, imageUrl?: string): Promise<{
     priceMarket: number | null
     priceLow: number | null
     card_effect: string | null
@@ -197,7 +197,6 @@ interface ElectronAPI {
     attributes: string | null
     counter: string | null
     card_type: string | null
-    tcgplayer_url: string | null
     abilities: string[]
   } | null>
   getImageUrl(imagePath: string | null): string | null

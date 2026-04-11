@@ -1,14 +1,14 @@
 {
   "name": "offdex",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 4321",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "electron:dev": "concurrently -k -n \"Next,Electron\" -c \"blue,green\" \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:dev": "concurrently -k -n \"Next,Electron\" -c \"blue,green\" \"npm run dev\" \"wait-on http://localhost:4321 && electron .\"",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "npm run build && electron-builder --win",
     "electron:build:mac": "npm run build && electron-builder --mac",

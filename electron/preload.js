@@ -64,7 +64,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getOptcgSets: () => ipcRenderer.invoke('op:sets'),
 
   // One Piece card details from cardboard2 (price, card effect, cost, power, etc.)
-  getOpCardDetails: (tcgApiId) => ipcRenderer.invoke('op:card-details', tcgApiId),
+  getOpCardDetails: (tcgApiId, name, imageUrl) => ipcRenderer.invoke('op:card-details', tcgApiId, name, imageUrl),
 
   // EUR/USD live exchange rate (cached per session)
   getEurUsdRate: () => ipcRenderer.invoke('tcg:get-eur-usd-rate'),
