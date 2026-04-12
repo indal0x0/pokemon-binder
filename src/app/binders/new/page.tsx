@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NavBar } from '@/components/NavBar'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
 import * as api from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function NewBinderPage() {
   const router = useRouter()
@@ -39,6 +40,9 @@ export default function NewBinderPage() {
         await api.updateBinder(binder.id, { coverImagePath, coverColor: null, coverPreset: null })
       }
       router.push(`/binder?id=${binder.id}`)
+    } catch (err) {
+      console.error('Failed to create binder:', err)
+      toast.error('Failed to create binder')
     } finally {
       setLoading(false)
     }
