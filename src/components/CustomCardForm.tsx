@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Upload, ImageOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CardRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 const CONDITIONS = [
   { short: 'NM',  label: 'Near Mint' },
@@ -54,11 +55,11 @@ export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) { toast.error('Card name is required'); return }
-    if (!window.electronAPI) return
+    if (!api) return
 
     setSubmitting(true)
     try {
-      let card = await window.electronAPI.createCard({
+      let card = await api.createCard({
         binderId,
         pageId,
         tcgApiId: 'custom',
@@ -77,10 +78,10 @@ export function CustomCardForm({ binderId, pageId, onAdd }: Props) {
         tradeList: 0,
         purchasedPrice: pricePaid ? parseFloat(pricePaid) : null,
         isCustom: 1,
-      } as Parameters<typeof window.electronAPI.createCard>[0])
+      } as Parameters<typeof api.createCard>[0])
 
       if (imageFile) {
-        card = await window.electronAPI.uploadCardImage(card.id, binderId, imageFile)
+        card = await api.uploadCardImage(card.id, binderId, imageFile)
       }
 
       onAdd(card)

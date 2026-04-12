@@ -1,18 +1,14 @@
 'use client'
 
+import * as api from '@/lib/api'
+
 export const PRESETS = [
-  { id: 'pokeball',   label: 'Pokéball' },
-  { id: 'masterball', label: 'Master Ball' },
-  { id: 'ultraball',  label: 'Ultra Ball' },
-  { id: 'greatball',  label: 'Great Ball' },
-  { id: 'fire',       label: 'Fire' },
-  { id: 'water',      label: 'Water' },
-  { id: 'grass',      label: 'Grass' },
-  { id: 'electric',   label: 'Electric' },
-  { id: 'psychic',    label: 'Psychic' },
-  { id: 'dragon',     label: 'Dragon' },
-  { id: 'shadow',     label: 'Shadow' },
-  { id: 'legendary',  label: 'Legendary' },
+  { id: 'assorted-pokemon', label: 'Assorted Pokemon' },
+  { id: 'eeveelutions',     label: 'Eeveelutions' },
+  { id: 'mantyke',          label: 'Mantyke' },
+  { id: 'pikachu',          label: 'Pikachu' },
+  { id: 'riolu',            label: 'Riolu' },
+  { id: 'vaporeon',         label: 'Vaporeon' },
 ]
 
 export const PATTERNS: { id: string; label: string; svg: string }[] = [
@@ -66,9 +62,9 @@ export const PATTERNS: { id: string; label: string; svg: string }[] = [
 
 export function getPresetUrl(preset: string) {
   if (typeof window !== 'undefined' && window.location.protocol === 'app:') {
-    return `app://./preset-covers/${preset}.svg`
+    return `app://./preset-covers/${preset}.png`
   }
-  return `/preset-covers/${preset}.svg`
+  return `/preset-covers/${preset}.png`
 }
 
 export function patternStyle(patternId: string | null | undefined): React.CSSProperties {
@@ -76,7 +72,10 @@ export function patternStyle(patternId: string | null | undefined): React.CSSPro
   const p = PATTERNS.find(pt => pt.id === patternId)
   if (!p || !p.svg) return {}
   const encoded = encodeURIComponent(p.svg)
-  return { backgroundImage: `url("data:image/svg+xml,${encoded}")` }
+  return {
+    backgroundImage: `url("data:image/svg+xml,${encoded}")`,
+    backgroundPosition: 'center',
+  }
 }
 
 interface CoverSource {
@@ -96,7 +95,7 @@ export function BinderCover({
   /** Pass a blob URL to preview an image before it's uploaded */
   imageOverride?: string | null
 }) {
-  if (binder.coverPreset) {
+  if (binder.coverPreset && PRESETS.some(p => p.id === binder.coverPreset)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -109,7 +108,7 @@ export function BinderCover({
 
   const imgUrl = imageOverride
     ?? (binder.coverImagePath && typeof window !== 'undefined'
-      ? (window.electronAPI?.getImageUrl(binder.coverImagePath) ?? null)
+      ? (api.getImageUrl(binder.coverImagePath) ?? null)
       : null)
 
   if (imgUrl) {

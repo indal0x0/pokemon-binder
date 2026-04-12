@@ -7,6 +7,7 @@ import { Heart, Search, X, Loader2, Trash2 } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import type { WishlistCard, TcgCardResult, OnePieceCardResult } from '@/types/electron'
+import * as api from '@/lib/api'
 
 type AnyCard = TcgCardResult | OnePieceCardResult
 type GameMode = 'pokemon' | 'onepiece'
@@ -43,8 +44,7 @@ export default function WishlistPage() {
 
   // Load wishlist on mount
   useEffect(() => {
-    if (!window.electronAPI) return
-    window.electronAPI.listWishlistCards()
+    api.listWishlistCards()
       .then(setWishlist)
       .catch(() => toast.error('Failed to load wishlist'))
       .finally(() => setLoading(false))
@@ -52,30 +52,29 @@ export default function WishlistPage() {
 
   // Load sets when game mode changes
   useEffect(() => {
-    if (!window.electronAPI) return
     setSets([])
     setSelectedSet('')
     setSearchResults([])
     setSearchQuery('')
     if (gameMode === 'pokemon') {
-      window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
+      api.getPokemonSets().then(setSets).catch(() => {})
     } else {
-      window.electronAPI.getOptcgSets().then(setSets).catch(() => {})
+      api.getOptcgSets().then(setSets).catch(() => {})
     }
   }, [gameMode])
 
   const runSearch = useCallback(async (q: string, mode: GameMode, set: string) => {
-    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
+    if (!q.trim() || q.trim().length < 2) {
       setSearchResults([])
       return
     }
     setSearching(true)
     try {
       if (mode === 'onepiece') {
-        const { cards } = await window.electronAPI.searchOptcg(q.trim(), set || undefined)
+        const { cards } = await api.searchOptcg(q.trim(), set || undefined)
         setSearchResults(cards)
       } else {
-        const { cards } = await window.electronAPI.searchTcg(q.trim(), 1)
+        const { cards } = await api.searchTcg(q.trim(), 1)
         const filtered = set ? cards.filter(c => c.setId === set) : cards
         setSearchResults(filtered)
       }
@@ -94,7 +93,6 @@ export default function WishlistPage() {
   }
 
   async function addToWishlist(card: AnyCard) {
-    if (!window.electronAPI) return
     const alreadyAdded = wishlist.some(w => w.tcgApiId === card.tcgApiId)
     if (alreadyAdded) {
       toast.info('Already in wishlist')
@@ -102,7 +100,7 @@ export default function WishlistPage() {
     }
     setAddingId(card.tcgApiId)
     try {
-      const created = await window.electronAPI.createWishlistCard({
+      const created = await api.createWishlistCard({
         tcgApiId: card.tcgApiId,
         name: card.name,
         setId: card.setId,
@@ -122,9 +120,8 @@ export default function WishlistPage() {
   }
 
   async function removeFromWishlist(id: string) {
-    if (!window.electronAPI) return
     try {
-      await window.electronAPI.deleteWishlistCard(id)
+      await api.deleteWishlistCard(id)
       setWishlist(prev => prev.filter(w => w.id !== id))
     } catch {
       toast.error('Failed to remove card')
@@ -132,10 +129,9 @@ export default function WishlistPage() {
   }
 
   async function cyclePriority(card: WishlistCard) {
-    if (!window.electronAPI) return
     const next = PRIORITY_CYCLE[card.priority]
     try {
-      const updated = await window.electronAPI.updateWishlistCard(card.id, { priority: next })
+      const updated = await api.updateWishlistCard(card.id, { priority: next })
       setWishlist(prev => prev.map(w => w.id === card.id ? updated : w))
     } catch {
       toast.error('Failed to update priority')
@@ -143,9 +139,8 @@ export default function WishlistPage() {
   }
 
   async function saveNotes(card: WishlistCard) {
-    if (!window.electronAPI) return
     try {
-      const updated = await window.electronAPI.updateWishlistCard(card.id, { notes: notesInput.trim() || null })
+      const updated = await api.updateWishlistCard(card.id, { notes: notesInput.trim() || null })
       setWishlist(prev => prev.map(w => w.id === card.id ? updated : w))
     } catch {
       toast.error('Failed to save notes')

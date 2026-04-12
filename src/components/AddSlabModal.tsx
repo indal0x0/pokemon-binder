@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2, Paperclip } from 'lucide-react'
 import { toast } from 'sonner'
 import type { SlabRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC'] as const
 
@@ -40,13 +41,13 @@ export function AddSlabModal({ open, onClose, onCreated }: Props) {
     e.preventDefault()
     if (!name.trim()) { toast.error('Card name is required'); return }
     if (!grade.trim()) { toast.error('Grade is required'); return }
-    if (!window.electronAPI) return
+    if (!api) return
 
     const gradingCompany = company === 'Custom' ? customCompany.trim() : company
 
     setSubmitting(true)
     try {
-      let slab = await window.electronAPI.createSlab({
+      let slab = await api.createSlab({
         name: name.trim(),
         gradingCompany,
         grade: grade.trim(),
@@ -56,7 +57,7 @@ export function AddSlabModal({ open, onClose, onCreated }: Props) {
       })
 
       if (imageFile) {
-        slab = await window.electronAPI.uploadSlabImage(slab.id, imageFile)
+        slab = await api.uploadSlabImage(slab.id, imageFile)
       }
 
       onCreated(slab)

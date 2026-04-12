@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import type { TcgCardResult, OnePieceCardResult, FullCardPricing, CardRow } from '@/types/electron'
 import { CardDetailModal } from '@/components/CardDetailModal'
+import * as api from '@/lib/api'
 
 type AnyCard = TcgCardResult | OnePieceCardResult
 type GameMode = 'pokemon' | 'onepiece'
@@ -43,32 +44,32 @@ export default function BrowsePage() {
   const priceTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
-    if (!window.electronAPI) return
+    if (!api) return
     setSets([])
     setSelectedSet('')
     setResults([])
     if (gameMode === 'pokemon') {
-      window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
+      api.getPokemonSets().then(setSets).catch(() => {})
     } else {
-      window.electronAPI.getOptcgSets().then(setSets).catch(() => {})
+      api.getOptcgSets().then(setSets).catch(() => {})
     }
   }, [gameMode])
 
   const loadPage = useCallback(async (q: string, page: number, mode: GameMode = 'pokemon', set = '') => {
-    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) return
+    if (!q.trim() || q.trim().length < 2 || !api) return
     priceTimeoutsRef.current.forEach(t => clearTimeout(t))
     priceTimeoutsRef.current = []
     setCardPrices({})
     setSearching(true)
     try {
       if (mode === 'onepiece') {
-        const { cards } = await window.electronAPI.searchOptcg(q.trim(), set || undefined)
+        const { cards } = await api.searchOptcg(q.trim(), set || undefined)
         setResults(cards)
         setHasMore(false)
         setBrowsePage(1)
       } else {
         const filteredSet = set
-        const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), page)
+        const { cards, hasMore: more } = await api.searchTcg(q.trim(), page)
         const filtered = filteredSet ? cards.filter(c => c.setId === filteredSet) : cards
         setResults(filtered)
         setHasMore(filteredSet ? false : more)
@@ -77,7 +78,7 @@ export default function BrowsePage() {
         filtered.forEach((card, i) => {
           const t = setTimeout(async () => {
             try {
-              const prices = await window.electronAPI!.getCardPricesBatch([card.tcgApiId])
+              const prices = await api!.getCardPricesBatch([card.tcgApiId])
               setCardPrices(prev => ({ ...prev, [card.tcgApiId]: prices[card.tcgApiId] ?? null }))
             } catch {
               setCardPrices(prev => ({ ...prev, [card.tcgApiId]: null }))
@@ -94,7 +95,7 @@ export default function BrowsePage() {
   }, [])
 
   const search = useCallback(async (q: string, mode: GameMode = 'pokemon', set = '') => {
-    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
+    if (!q.trim() || q.trim().length < 2 || !api) {
       setResults([])
       setCardPrices({})
       setHasMore(false)
@@ -113,10 +114,10 @@ export default function BrowsePage() {
   }
 
   async function addCard(card: AnyCard) {
-    if (!window.electronAPI || !binderId) return
+    if (!api || !binderId) return
     setAddingId(card.tcgApiId)
     try {
-      await window.electronAPI.createCard({
+      await api.createCard({
         binderId,
         pageId: pageId || undefined,
         tcgApiId: card.tcgApiId,
@@ -136,7 +137,7 @@ export default function BrowsePage() {
         quantity: 1,
         tradeList: 0,
         condition: null,
-      } as Parameters<typeof window.electronAPI.createCard>[0])
+      } as Parameters<typeof api.createCard>[0])
       setAddedIds(prev => new Set(prev).add(card.tcgApiId))
       toast.success(`Added ${card.name}`)
     } catch {

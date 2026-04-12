@@ -6,6 +6,7 @@ import { Trash2, ArrowLeftRight, EyeOff } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import type { CardRow, FullCardPricing } from '@/types/electron'
 import { CardDetailModal } from './CardDetailModal'
+import * as api from '@/lib/api'
 
 export function BinderCardGrid({
   cards,
@@ -32,12 +33,12 @@ export function BinderCardGrid({
 
   useEffect(() => {
     const unpriced = nonPocketCards.filter(c => c.priceMarket == null && !c.tcgApiId.startsWith('unmatched-'))
-    if (!unpriced.length || !window.electronAPI) return
-    window.electronAPI.getEurUsdRate().then(setEurUsdRate).catch(() => setEurUsdRate(1.10))
+    if (!unpriced.length || !api) return
+    api.getEurUsdRate().then(setEurUsdRate).catch(() => setEurUsdRate(1.10))
     // Single batched fetch for all unpriced cards
     const t = setTimeout(async () => {
       try {
-        const batch = await window.electronAPI!.getCardPricesBatch(unpriced.map(c => c.tcgApiId))
+        const batch = await api!.getCardPricesBatch(unpriced.map(c => c.tcgApiId))
         setLivePrices(prev => ({ ...prev, ...batch }))
       } catch { /* leave as null */ }
     }, 300)
@@ -45,10 +46,10 @@ export function BinderCardGrid({
   }, [nonPocketCards])
 
   async function deleteCard(cardId: string) {
-    if (!window.electronAPI) return
+    if (!api) return
     setDeletingId(cardId)
     try {
-      await window.electronAPI.deleteCard(cardId)
+      await api.deleteCard(cardId)
       onRefresh()
     } finally {
       setDeletingId(null)
@@ -56,10 +57,10 @@ export function BinderCardGrid({
   }
 
   async function toggleTradeList(card: CardRow) {
-    if (!window.electronAPI) return
+    if (!api) return
     setTogglingId(card.id)
     try {
-      await window.electronAPI.updateCard(card.id, { tradeList: !card.tradeList })
+      await api.updateCard(card.id, { tradeList: !card.tradeList })
       onRefresh()
     } finally {
       setTogglingId(null)
@@ -131,7 +132,7 @@ export function BinderCardGrid({
                 <img
                   src={
                     card.imageUrl.startsWith('uploads/')
-                      ? window.electronAPI?.getImageUrl(card.imageUrl) ?? card.imageUrl
+                      ? api.getImageUrl(card.imageUrl) ?? card.imageUrl
                       : card.imageUrl
                   }
                   alt={card.name}
@@ -176,7 +177,7 @@ export function BinderCardGrid({
                 value={card.condition ?? ''}
                 onChange={async e => {
                   const newVal = e.target.value || null
-                  await window.electronAPI?.updateCard(card.id, { condition: newVal })
+                  await api.updateCard(card.id, { condition: newVal })
                   onRefresh()
                 }}
                 onClick={e => e.stopPropagation()}

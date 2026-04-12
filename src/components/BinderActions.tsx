@@ -14,6 +14,7 @@ import {
 import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import * as api from '@/lib/api'
 
 export function BinderActions({
   binderId,
@@ -32,8 +33,8 @@ export function BinderActions({
 
   // Register progress listener for price refresh
   useEffect(() => {
-    if (!window.electronAPI?.onPricesProgress) return
-    const unsub = window.electronAPI.onPricesProgress(({ current, total, name }) => {
+    if (!api.onPricesProgress) return
+    const unsub = api.onPricesProgress(({ current, total, name }) => {
       const pct = total > 0 ? Math.round((current / total) * 100) : 0
       setRefreshProgress(pct)
       setRefreshLabel(name)
@@ -42,12 +43,12 @@ export function BinderActions({
   }, [])
 
   const refreshPrices = useCallback(async () => {
-    if (!window.electronAPI) return
+    if (!api) return
     setRefreshing(true)
     setRefreshProgress(0)
     setRefreshLabel('')
     try {
-      const data = await window.electronAPI.refreshPrices(binderId)
+      const data = await api.refreshPrices(binderId)
       toast.success(`Updated prices for ${data.updated} card${data.updated !== 1 ? 's' : ''}`)
       onRefresh()
     } catch {
@@ -60,10 +61,10 @@ export function BinderActions({
   }, [binderId, onRefresh])
 
   async function deleteBinder() {
-    if (!window.electronAPI) return
+    if (!api) return
     setDeleting(true)
     try {
-      await window.electronAPI.deleteBinder(binderId)
+      await api.deleteBinder(binderId)
       router.push('/binders')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete binder')

@@ -16,6 +16,7 @@ import { ChevronUp, ChevronDown, Pencil, Trash2, CheckCircle, AlertCircle, Loade
 import { toast } from 'sonner'
 import { useRef } from 'react'
 import type { PageRow, CardRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -63,10 +64,10 @@ export function PagesGallery({
     : DIMENSION_PRESETS.find(p => p.label === selectedPreset) ?? { cols: 3, rows: 3 }
 
   async function createPage() {
-    if (!window.electronAPI) return
+    if (!api) return
     setCreating(true)
     try {
-      const page = await window.electronAPI.createPage({
+      const page = await api.createPage({
         binderId,
         name: newPageName.trim() || undefined,
         cols: dims.cols,
@@ -86,14 +87,14 @@ export function PagesGallery({
   }
 
   async function move(index: number, direction: -1 | 1) {
-    if (!window.electronAPI) return
+    if (!api) return
     const newPages = [...pages]
     const swapIndex = index + direction
     if (swapIndex < 0 || swapIndex >= newPages.length) return
     ;[newPages[index], newPages[swapIndex]] = [newPages[swapIndex], newPages[index]]
     setPages(newPages)
     try {
-      await window.electronAPI.reorderPages(binderId, newPages.map(p => p.id))
+      await api.reorderPages(binderId, newPages.map(p => p.id))
       onRefresh()
     } catch {
       toast.error('Failed to reorder pages')
@@ -107,11 +108,11 @@ export function PagesGallery({
   }
 
   async function saveRename() {
-    if (!renameTarget || !window.electronAPI) return
+    if (!renameTarget || !api) return
     setSaving(true)
     try {
       const newName = renameValue.trim() || `Page ${renameTarget.pageNumber}`
-      await window.electronAPI.updatePage(renameTarget.id, { name: newName })
+      await api.updatePage(renameTarget.id, { name: newName })
       setPages(prev => prev.map(p => p.id === renameTarget.id ? { ...p, name: newName } : p))
       setRenameTarget(null)
       onRefresh()
@@ -123,10 +124,10 @@ export function PagesGallery({
   }
 
   async function deletePage() {
-    if (!deleteTarget || !window.electronAPI) return
+    if (!deleteTarget || !api) return
     setSaving(true)
     try {
-      await window.electronAPI.deletePage(deleteTarget.id)
+      await api.deletePage(deleteTarget.id)
       setPages(prev => prev.filter(p => p.id !== deleteTarget.id))
       setDeleteTarget(null)
       toast.success('Page deleted')
@@ -143,7 +144,7 @@ export function PagesGallery({
     setThumbCards([])
     setThumbCardsLoading(true)
     try {
-      const cards = await window.electronAPI!.listCards(binderId, page.id)
+      const cards = await api!.listCards(binderId, page.id)
       setThumbCards(cards.filter(c => c.imageUrl))
     } catch {
       // ignore
@@ -153,9 +154,9 @@ export function PagesGallery({
   }
 
   async function applyThumbImage(page: PageRow, imagePath: string) {
-    if (!window.electronAPI) return
+    if (!api) return
     try {
-      await window.electronAPI.updatePage(page.id, { imagePath })
+      await api.updatePage(page.id, { imagePath })
       setPages(prev => prev.map(p => p.id === page.id ? { ...p, imagePath } : p))
       setThumbEditPage(null)
       onRefresh()
@@ -166,9 +167,9 @@ export function PagesGallery({
   }
 
   async function handleThumbUpload(page: PageRow, file: File) {
-    if (!window.electronAPI) return
+    if (!api) return
     try {
-      const path = await window.electronAPI.uploadImage(page.binderId, file)
+      const path = await api.uploadImage(page.binderId, file)
       await applyThumbImage(page, path)
     } catch {
       toast.error('Failed to upload image')
@@ -198,7 +199,7 @@ export function PagesGallery({
               const customThumbUrl = page.imagePath
                 ? page.imagePath.startsWith('http')
                   ? page.imagePath
-                  : window.electronAPI?.getImageUrl(page.imagePath) ?? null
+                  : api.getImageUrl(page.imagePath) ?? null
                 : null
               return (
                 <div key={page.id} className="relative group rounded-lg border bg-card overflow-hidden hover:scale-[1.03] hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
@@ -212,7 +213,7 @@ export function PagesGallery({
                         src={
                           page.firstCardImageUrl.startsWith('http')
                             ? page.firstCardImageUrl
-                            : (window.electronAPI?.getImageUrl(page.firstCardImageUrl) ?? page.firstCardImageUrl)
+                            : (api.getImageUrl(page.firstCardImageUrl) ?? page.firstCardImageUrl)
                         }
                         alt={page.name}
                         className="w-full aspect-[3/4] object-cover"
@@ -458,7 +459,7 @@ export function PagesGallery({
                       <img
                         src={
                           card.imageUrl!.startsWith('uploads/')
-                            ? window.electronAPI?.getImageUrl(card.imageUrl!) ?? card.imageUrl!
+                            ? api.getImageUrl(card.imageUrl!) ?? card.imageUrl!
                             : card.imageUrl!
                         }
                         alt={card.name}

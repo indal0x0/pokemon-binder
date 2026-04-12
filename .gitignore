@@ -49,3 +49,7 @@ next-env.d.ts
 *.db-journal
 .env.local
 /dist/
+
+# Claude Code internal files
+.claude/
+.planning/

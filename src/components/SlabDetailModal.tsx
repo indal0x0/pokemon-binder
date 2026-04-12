@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import { ImageLightbox } from './ImageLightbox'
 import type { SlabRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 const GRADING_COMPANIES = ['PSA', 'BGS', 'CGC']
 
@@ -45,27 +46,27 @@ export function SlabDetailModal({ slab, onClose, onUpdated, onDeleted }: Props) 
 
   const imageUrl = slab.imageUrl
     ? slab.imageUrl.startsWith('uploads/')
-      ? window.electronAPI?.getImageUrl(slab.imageUrl) ?? null
+      ? api.getImageUrl(slab.imageUrl) ?? null
       : slab.imageUrl
     : null
 
   async function saveField(field: keyof SlabRow, value: string) {
-    if (!window.electronAPI) return
+    if (!api) return
     let parsed: string | number | null = value.trim() || null
     if (field === 'pricePaid' || field === 'currentPrice') {
       parsed = value.trim() ? parseFloat(value) : null
     }
     try {
-      const updated = await window.electronAPI.updateSlab(slab!.id, { [field]: parsed } as Parameters<typeof window.electronAPI.updateSlab>[1])
+      const updated = await api.updateSlab(slab!.id, { [field]: parsed } as Parameters<typeof api.updateSlab>[1])
       onUpdated(updated)
     } catch { toast.error('Failed to save') }
   }
 
   async function handleFile(file: File) {
-    if (!window.electronAPI) return
+    if (!api) return
     setUploading(true)
     try {
-      const updated = await window.electronAPI.uploadSlabImage(slab!.id, file)
+      const updated = await api.uploadSlabImage(slab!.id, file)
       onUpdated(updated)
     } catch { toast.error('Failed to upload image') }
     finally { setUploading(false) }
@@ -73,10 +74,10 @@ export function SlabDetailModal({ slab, onClose, onUpdated, onDeleted }: Props) 
 
   async function handleDelete() {
     if (!window.confirm('Delete this slab?')) return
-    if (!window.electronAPI) return
+    if (!api) return
     setDeleting(true)
     try {
-      await window.electronAPI.deleteSlab(slab!.id)
+      await api.deleteSlab(slab!.id)
       onDeleted(slab!.id)
       onClose()
     } catch { toast.error('Failed to delete'); setDeleting(false) }

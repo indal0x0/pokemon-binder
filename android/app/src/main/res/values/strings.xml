@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OffDex</string>
+    <string name="title_activity_main">OffDex</string>
+    <string name="package_name">com.offdex.app</string>
+    <string name="custom_url_scheme">com.offdex.app</string>
+</resources>

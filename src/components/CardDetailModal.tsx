@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Upload, ImageOff, Loader2 } from 'lucide-react'
 import type { CardRow, FullCardPricing } from '@/types/electron'
 import { ImageLightbox } from './ImageLightbox'
+import * as api from '@/lib/api'
 
 interface Props {
   card: CardRow | null
@@ -52,7 +53,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   useEffect(() => {
     if (!card || !isOnePiece) { setOpDetails(null); return }
     setLoadingOpDetails(true)
-    window.electronAPI?.getOpCardDetails(card.tcgApiId, card.name, card.imageUrl ?? undefined)
+    api.getOpCardDetails(card.tcgApiId, card.name, card.imageUrl ?? undefined)
       .then(d => setOpDetails(d ?? null))
       .catch(() => setOpDetails(null))
       .finally(() => setLoadingOpDetails(false))
@@ -65,7 +66,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
     if (card.tcgApiId.startsWith('unmatched-')) return
     setLoadingPrices(true)
     setPricing(null)
-    window.electronAPI?.getCardPrices(card.tcgApiId)
+    api.getCardPrices(card.tcgApiId)
       .then(p => setPricing(p))
       .catch(() => setPricing(null))
       .finally(() => setLoadingPrices(false))
@@ -92,7 +93,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
     const hasUsd = pricing.variants && pricing.variants.length > 0
     const hasEur = pricing.cardmarket && (pricing.cardmarket.avg != null || pricing.cardmarket.trend != null)
     if (!hasUsd && hasEur && eurUsdRate === null) {
-      window.electronAPI?.getEurUsdRate().then(rate => setEurUsdRate(rate)).catch(() => setEurUsdRate(1.10))
+      api.getEurUsdRate().then(rate => setEurUsdRate(rate)).catch(() => setEurUsdRate(1.10))
     }
   }, [pricing, eurUsdRate])
 
@@ -100,15 +101,15 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
 
   const imageUrl = card.imageUrl
     ? card.imageUrl.startsWith('uploads/')
-      ? window.electronAPI?.getImageUrl(card.imageUrl) ?? card.imageUrl
+      ? api.getImageUrl(card.imageUrl) ?? card.imageUrl
       : card.imageUrl
     : null
 
   async function handleFile(file: File) {
-    if (!window.electronAPI || !card) return
+    if (!api || !card) return
     setUploading(true)
     try {
-      const updated = await window.electronAPI.uploadCardImage(card.id, card.binderId, file)
+      const updated = await api.uploadCardImage(card.id, card.binderId, file)
       onCardUpdated(updated)
     } finally {
       setUploading(false)
@@ -116,13 +117,13 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   }
 
   async function saveCustomField(field: string, value: string | null) {
-    if (!window.electronAPI || !card) return
+    if (!api || !card) return
     setSavingField(true)
     try {
       const parsed = field === 'priceMarket' || field === 'purchasedPrice'
         ? (value === '' || value === null ? null : parseFloat(value as string))
         : value
-      const updated = await window.electronAPI.updateCard(card.id, { [field]: parsed })
+      const updated = await api.updateCard(card.id, { [field]: parsed })
       onCardUpdated(updated)
     } finally {
       setSavingField(false)
@@ -130,13 +131,13 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
   }
 
   async function savePurchasedPrice() {
-    if (!window.electronAPI || !card) return
+    if (!api || !card) return
     const val = purchasedPriceInput.trim()
     const parsed = val === '' ? null : parseFloat(val)
     if (parsed !== null && isNaN(parsed)) return
     setSavingPurchasedPrice(true)
     try {
-      const updated = await window.electronAPI.updateCard(card.id, { purchasedPrice: parsed })
+      const updated = await api.updateCard(card.id, { purchasedPrice: parsed })
       onCardUpdated(updated)
     } finally {
       setSavingPurchasedPrice(false)
@@ -250,7 +251,7 @@ export function CardDetailModal({ card, onClose, onCardUpdated, readOnly = false
                   value={card.condition ?? ''}
                   onChange={async e => {
                     const newVal = e.target.value || null
-                    await window.electronAPI?.updateCard(card.id, { condition: newVal })
+                    await api.updateCard(card.id, { condition: newVal })
                     onCardUpdated({ ...card, condition: newVal })
                   }}
                   className="text-xs px-2 py-1 rounded-md border border-border bg-background text-foreground"

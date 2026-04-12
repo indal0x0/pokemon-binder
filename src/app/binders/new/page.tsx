@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NavBar } from '@/components/NavBar'
 import { CoverPicker, defaultCoverState, type CoverState } from '@/components/CoverPicker'
+import * as api from '@/lib/api'
 
 export default function NewBinderPage() {
   const router = useRouter()
@@ -22,10 +23,10 @@ export default function NewBinderPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !window.electronAPI) return
+    if (!name.trim()) return
     setLoading(true)
     try {
-      const binder = await window.electronAPI.createBinder({
+      const binder = await api.createBinder({
         name: name.trim(),
         description: description.trim() || undefined,
         coverColor: cover.mode === 'color' ? cover.color : null,
@@ -34,8 +35,8 @@ export default function NewBinderPage() {
         coverImagePath: null,
       })
       if (cover.mode === 'image' && cover.imageFile) {
-        const coverImagePath = await window.electronAPI.uploadCover(binder.id, cover.imageFile)
-        await window.electronAPI.updateBinder(binder.id, { coverImagePath, coverColor: null, coverPreset: null })
+        const coverImagePath = await api.uploadCover(binder.id, cover.imageFile)
+        await api.updateBinder(binder.id, { coverImagePath, coverColor: null, coverPreset: null })
       }
       router.push(`/binder?id=${binder.id}`)
     } finally {

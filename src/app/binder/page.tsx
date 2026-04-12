@@ -15,6 +15,7 @@ import { NavBar } from '@/components/NavBar'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import type { BinderRow, PageRow, CardRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 type FullBinder = BinderRow & { pages: PageRow[]; cards: CardRow[] }
 
@@ -46,11 +47,11 @@ function BinderPageInner() {
   }
 
   async function saveEditDesc() {
-    if (!binder || !window.electronAPI) return
+    if (!binder) return
     const trimmed = descValue.trim()
     if (trimmed === (binder.description ?? '')) { setEditingDesc(false); return }
     try {
-      await window.electronAPI.updateBinder(binder.id, { description: trimmed || null })
+      await api.updateBinder(binder.id, { description: trimmed || null })
       setBinder(prev => prev ? { ...prev, description: trimmed || null } : null)
     } catch { /* keep existing */ }
     setEditingDesc(false)
@@ -66,11 +67,11 @@ function BinderPageInner() {
   }
 
   async function saveEditName() {
-    if (!binder || !window.electronAPI) return
+    if (!binder) return
     const trimmed = nameValue.trim()
     if (!trimmed || trimmed === binder.name) { setEditingName(false); return }
     try {
-      await window.electronAPI.updateBinder(binder.id, { name: trimmed })
+      await api.updateBinder(binder.id, { name: trimmed })
       setBinder(prev => prev ? { ...prev, name: trimmed } : null)
     } catch { /* keep existing name */ }
     setEditingName(false)
@@ -81,9 +82,9 @@ function BinderPageInner() {
   }
 
   const load = useCallback(async () => {
-    if (!binderId || !window.electronAPI) { setLoading(false); return }
+    if (!binderId) { setLoading(false); return }
     try {
-      const data = await window.electronAPI.getBinder(binderId)
+      const data = await api.getBinder(binderId)
       if (!data) { router.push('/binders'); return }
       setBinder(data)
       setLoading(false)
@@ -97,7 +98,7 @@ function BinderPageInner() {
     if (binder.coverPreset) {
       setCover({ mode: 'preset', preset: binder.coverPreset, color: '#3b82f6', pattern: 'none', imageFile: null, imagePreview: null })
     } else if (binder.coverImagePath) {
-      setCover({ mode: 'image', preset: null, color: '#3b82f6', pattern: 'none', imageFile: null, imagePreview: window.electronAPI?.getImageUrl(binder.coverImagePath) ?? null })
+      setCover({ mode: 'image', preset: null, color: '#3b82f6', pattern: 'none', imageFile: null, imagePreview: api.getImageUrl(binder.coverImagePath) ?? null })
     } else {
       setCover({ mode: 'color', preset: null, color: binder.coverColor || '#3b82f6', pattern: binder.coverPattern || 'none', imageFile: null, imagePreview: null })
     }
@@ -105,16 +106,16 @@ function BinderPageInner() {
   }
 
   async function saveCover() {
-    if (!binder || !window.electronAPI) return
+    if (!binder) return
     setCoverSaving(true)
     try {
       if (cover.mode === 'preset') {
-        await window.electronAPI.updateBinder(binder.id, { coverPreset: cover.preset, coverColor: null, coverImagePath: null, coverPattern: null })
+        await api.updateBinder(binder.id, { coverPreset: cover.preset, coverColor: null, coverImagePath: null, coverPattern: null })
       } else if (cover.mode === 'color') {
-        await window.electronAPI.updateBinder(binder.id, { coverColor: cover.color, coverPattern: cover.pattern, coverPreset: null, coverImagePath: null })
+        await api.updateBinder(binder.id, { coverColor: cover.color, coverPattern: cover.pattern, coverPreset: null, coverImagePath: null })
       } else if (cover.mode === 'image' && cover.imageFile) {
-        const path = await window.electronAPI.uploadCover(binder.id, cover.imageFile)
-        await window.electronAPI.updateBinder(binder.id, { coverImagePath: path, coverPreset: null, coverColor: null, coverPattern: null })
+        const path = await api.uploadCover(binder.id, cover.imageFile)
+        await api.updateBinder(binder.id, { coverImagePath: path, coverPreset: null, coverColor: null, coverPattern: null })
       }
       await load()
       setCoverOpen(false)

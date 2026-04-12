@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react'
 import { NavBar } from '@/components/NavBar'
 import { Button } from '@/components/ui/button'
 import { GitBranch } from 'lucide-react'
+import * as api from '@/lib/api'
 
 export default function SettingsPage() {
   const [dataPath, setDataPath] = useState<string | null>(null)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.electronAPI) {
-      window.electronAPI.getUserDataPath().then(p => setDataPath(p))
-    }
+    api.getUserDataPath().then(p => setDataPath(p)).catch(() => {})
   }, [])
 
   return (
@@ -40,7 +39,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.electronAPI?.openExternal('https://github.com/indal0x0/off-dex')}
+                  onClick={() => api.openExternal('https://github.com/indal0x0/off-dex')}
                 >
                   <GitBranch className="h-3.5 w-3.5 mr-1.5" />
                   GitHub

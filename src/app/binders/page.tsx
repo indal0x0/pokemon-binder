@@ -10,6 +10,7 @@ import { Plus, BookOpen, Settings, Menu } from 'lucide-react'
 import type { BinderRow } from '@/types/electron'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { NavSidebar } from '@/components/NavSidebar'
+import * as api from '@/lib/api'
 
 export default function BindersPage() {
   const [binders, setBinders] = useState<BinderRow[]>([])
@@ -17,8 +18,7 @@ export default function BindersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    if (!window.electronAPI) { setLoading(false); return }
-    window.electronAPI.listBinders().then(data => {
+    api.listBinders().then(data => {
       setBinders(data)
       setLoading(false)
     }).catch(() => setLoading(false))

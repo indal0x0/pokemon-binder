@@ -9,6 +9,7 @@ import { SlabCard } from '@/components/SlabCard'
 import { AddSlabModal } from '@/components/AddSlabModal'
 import { SlabDetailModal } from '@/components/SlabDetailModal'
 import type { SlabRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 type SortMode = 'recent' | 'oldest' | 'grade-high' | 'grade-low' | 'value'
 
@@ -33,8 +34,7 @@ export default function SlabsPage() {
   const [sortMode, setSortMode] = useState<SortMode>('recent')
 
   useEffect(() => {
-    if (!window.electronAPI) { setLoading(false); return }
-    window.electronAPI.listSlabs().then(data => {
+    api.listSlabs().then(data => {
       setSlabs(data)
       setLoading(false)
     }).catch(() => setLoading(false))

@@ -26,6 +26,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Progress, ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
 import { NavBar } from '@/components/NavBar'
 import { CustomCardForm } from '@/components/CustomCardForm'
+import * as api from '@/lib/api'
 
 const DIMENSION_PRESETS = [
   { label: '1×1', cols: 1, rows: 1 },
@@ -105,9 +106,9 @@ function PageDetailInner() {
   // ─── Load page ───────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!pageId || !window.electronAPI) return
+    if (!pageId) return
     try {
-      const data = await window.electronAPI.getPage(pageId)
+      const data = await api.getPage(pageId)
       if (!data) { router.push('/binders'); return }
       setPage(data as PageData)
       setCards(data.cards ?? [])
@@ -115,7 +116,7 @@ function PageDetailInner() {
       // Fetch binder name for breadcrumb
       const bid = data.binderId
       if (bid) {
-        window.electronAPI.getBinder(bid)
+        api.getBinder(bid)
           .then(b => { if (b) setBinderName(b.name) })
           .catch(() => {})
       }
@@ -129,7 +130,7 @@ function PageDetailInner() {
   }, [pageId, load])
 
   useEffect(() => {
-    if (!window.electronAPI) return
+    if (!api) return
     setSets([])
     setSelectedSet('')
     setSearchResults([])
@@ -140,16 +141,16 @@ function PageDetailInner() {
     setFilterPocket(false)
     setShowSortFilter(false)
     if (gameMode === 'pokemon') {
-      window.electronAPI.getPokemonSets().then(setSets).catch(() => {})
+      api.getPokemonSets().then(setSets).catch(() => {})
     } else {
-      window.electronAPI.getOptcgSets().then(setSets).catch(() => {})
+      api.getOptcgSets().then(setSets).catch(() => {})
     }
   }, [gameMode])
 
   // ─── Card search panel ───────────────────────────────────────────────────────
 
   const runSearch = useCallback(async (q: string, mode: GameMode = 'pokemon', set = '') => {
-    if (!q.trim() || q.trim().length < 2 || !window.electronAPI) {
+    if (!q.trim() || q.trim().length < 2) {
       setSearchResults([])
       setHasMore(false)
       setSearchPage(1)
@@ -161,17 +162,17 @@ function PageDetailInner() {
     setSearchPrices({})
     try {
       if (mode === 'onepiece') {
-        const { cards } = await window.electronAPI.searchOptcg(q.trim(), set || undefined)
+        const { cards } = await api.searchOptcg(q.trim(), set || undefined)
         setSearchResults(cards)
         setHasMore(false)
       } else {
-        const { cards, hasMore: more } = await window.electronAPI.searchTcg(q.trim(), 1)
+        const { cards, hasMore: more } = await api.searchTcg(q.trim(), 1)
         const filtered = set ? cards.filter(c => c.setId === set) : cards
         setSearchResults(filtered)
         setHasMore(set ? false : more)
         if (filtered.length > 0) {
           setFetchingPrices(true)
-          window.electronAPI.getCardPricesBatch(filtered.map(c => c.tcgApiId))
+          api.getCardPricesBatch(filtered.map(c => c.tcgApiId))
             .then(prices => setSearchPrices(prices))
             .catch(() => {})
             .finally(() => setFetchingPrices(false))
@@ -185,18 +186,18 @@ function PageDetailInner() {
   }, [])
 
   async function goToPage(page: number) {
-    if (!window.electronAPI || searching) return
+    if (searching) return
     setSearching(true)
     setSearchPrices({})
     setSelectedCards(new Set())
     try {
-      const { cards, hasMore: more } = await window.electronAPI.searchTcg(currentQueryRef.current, page)
+      const { cards, hasMore: more } = await api.searchTcg(currentQueryRef.current, page)
       setSearchResults(cards)
       setHasMore(more)
       setSearchPage(page)
       if (cards.length > 0) {
         setFetchingPrices(true)
-        window.electronAPI.getCardPricesBatch(cards.map(c => c.tcgApiId))
+        api.getCardPricesBatch(cards.map(c => c.tcgApiId))
           .then(prices => setSearchPrices(prices))
           .catch(() => {})
           .finally(() => setFetchingPrices(false))
@@ -225,7 +226,7 @@ function PageDetailInner() {
   }
 
   async function addSelectedCards() {
-    if (!window.electronAPI || selectedCards.size === 0 || !page) return
+    if (selectedCards.size === 0 || !page) return
     setAdding(true)
     setAddProgress(0)
     const toAdd = searchResults.filter((c: AnyCard) => selectedCards.has(c.tcgApiId))
@@ -238,7 +239,7 @@ function PageDetailInner() {
     let nextPos = cards.length
     try {
       for (const card of fitsNow) {
-        await window.electronAPI.createCard({
+        await api.createCard({
           binderId,
           pageId,
           tcgApiId: card.tcgApiId,
@@ -253,7 +254,7 @@ function PageDetailInner() {
           quantity: 1,
           tradeList: 0,
           position: nextPos++,
-        } as Parameters<typeof window.electronAPI.createCard>[0])
+        } as Parameters<typeof api.createCard>[0])
         addedCount++
         setAddProgress(Math.round((addedCount / totalToAdd) * 100))
       }
@@ -265,7 +266,7 @@ function PageDetailInner() {
           const chunk = batch.slice(0, capacity)
           batch = batch.slice(capacity)
           pageCount++
-          const newPage = await window.electronAPI.createPage({
+          const newPage = await api.createPage({
             binderId,
             name: `${page.name} (cont.)`,
             cols: page.cols,
@@ -273,7 +274,7 @@ function PageDetailInner() {
           })
           for (let i = 0; i < chunk.length; i++) {
             const card = chunk[i]
-            await window.electronAPI.createCard({
+            await api.createCard({
               binderId,
               pageId: newPage.id,
               tcgApiId: card.tcgApiId,
@@ -288,7 +289,7 @@ function PageDetailInner() {
               quantity: 1,
               tradeList: 0,
               position: i,
-            } as Parameters<typeof window.electronAPI.createCard>[0])
+            } as Parameters<typeof api.createCard>[0])
             addedCount++
             setAddProgress(Math.round((addedCount / totalToAdd) * 100))
           }
@@ -312,9 +313,9 @@ function PageDetailInner() {
   }
 
   async function deleteCard(cardId: string) {
-    if (!window.electronAPI) return
+    if (!api) return
     try {
-      await window.electronAPI.deleteCard(cardId)
+      await api.deleteCard(cardId)
       setCards(prev => prev.filter(c => c.id !== cardId))
     } catch {
       toast.error('Failed to delete card')
@@ -322,9 +323,9 @@ function PageDetailInner() {
   }
 
   async function setPageThumbnail(imageUrl: string) {
-    if (!window.electronAPI || !pageId) return
+    if (!pageId) return
     try {
-      await window.electronAPI.updatePage(pageId, { imagePath: imageUrl })
+      await api.updatePage(pageId, { imagePath: imageUrl })
       toast.success('Thumbnail updated')
     } catch {
       toast.error('Failed to update thumbnail')
@@ -363,7 +364,7 @@ function PageDetailInner() {
     setCards(newCards)
 
     const positions = newCards.map((card, idx) => ({ id: card.id, position: idx }))
-    window.electronAPI?.reorderPageCards(pageId, positions).catch(() => {
+    api.reorderPageCards(pageId, positions).catch(() => {
       toast.error('Failed to save card order')
       setCards(cards)
     })
@@ -393,7 +394,7 @@ function PageDetailInner() {
   const overflowCount = Math.max(0, cards.length - editDims.cols * editDims.rows)
 
   async function saveDimensions() {
-    if (!window.electronAPI || !page) return
+    if (!page) return
     setSavingDims(true)
     try {
       const newCols = editDims.cols
@@ -402,20 +403,20 @@ function PageDetailInner() {
       const overflow = cards.slice(capacity)
       const keep = cards.slice(0, capacity)
 
-      await window.electronAPI.updatePage(pageId, { cols: newCols, rows: newRows })
+      await api.updatePage(pageId, { cols: newCols, rows: newRows })
 
       if (overflow.length > 0) {
         let batch = overflow
         while (batch.length > 0) {
           const chunk = batch.slice(0, capacity)
           batch = batch.slice(capacity)
-          const newPage = await window.electronAPI.createPage({
+          const newPage = await api.createPage({
             binderId,
             name: `${page.name} (cont.)`,
             cols: newCols,
             rows: newRows,
           })
-          await window.electronAPI.moveCardsToPage(chunk.map(c => c.id), newPage.id)
+          await api.moveCardsToPage(chunk.map(c => c.id), newPage.id)
         }
         toast.success(`Dimensions updated. ${overflow.length} card${overflow.length !== 1 ? 's' : ''} moved to new page${overflowCount > capacity ? 's' : ''}.`)
       } else {
@@ -552,7 +553,7 @@ function PageDetailInner() {
                       <img
                         src={
                           card.imageUrl.startsWith('uploads/')
-                            ? window.electronAPI?.getImageUrl(card.imageUrl) ?? card.imageUrl
+                            ? api.getImageUrl(card.imageUrl) ?? card.imageUrl
                             : card.imageUrl
                         }
                         alt={card.name}
@@ -589,7 +590,7 @@ function PageDetailInner() {
                           onClick={e => {
                             e.stopPropagation()
                             const src = card.imageUrl!.startsWith('uploads/')
-                              ? window.electronAPI?.getImageUrl(card.imageUrl!) ?? card.imageUrl!
+                              ? api.getImageUrl(card.imageUrl!) ?? card.imageUrl!
                               : card.imageUrl!
                             setLightboxSrc(src)
                           }}

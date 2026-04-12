@@ -3,6 +3,7 @@
 import { Award } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import type { SlabRow } from '@/types/electron'
+import * as api from '@/lib/api'
 
 interface Props {
   slab: SlabRow
@@ -12,7 +13,7 @@ interface Props {
 export function SlabCard({ slab, onClick }: Props) {
   const imageUrl = slab.imageUrl
     ? slab.imageUrl.startsWith('uploads/')
-      ? window.electronAPI?.getImageUrl(slab.imageUrl) ?? null
+      ? api.getImageUrl(slab.imageUrl) ?? null
       : slab.imageUrl
     : null
 
